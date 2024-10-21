@@ -1,0 +1,12 @@
+.sequence {
+  display: inline-block;
+  margin-right: 10px;
+}
+
+button {
+  cursor: pointer;
+}
+
+.steps {
+  margin: 10px;
+}
