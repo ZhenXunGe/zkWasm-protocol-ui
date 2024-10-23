@@ -24,7 +24,9 @@ const providerUrl = process.env["PROVIDER_URL"];
 const initialRoot = new Uint8Array([166, 157, 178, 62, 35, 83, 140, 56, 9, 235, 134, 184, 20, 145, 63, 43, 245, 186, 75, 233, 43, 42, 187, 217, 104, 152, 219, 89, 125, 199, 161, 9]);
 
 export function Buttons() {
-  const [loading, setLoading] = useState(false);
+  const [deployEnabled, setDeployEnabled] = useState(false);
+  const [addTxEnabled, setAddTxEnabled] = useState(true);
+  const [verifierEnabled, setVerifierEnabled] = useState(true);
   const dispatch = useAppDispatch();
 
   const proxyAddress = useAppSelector(selectProxyAddress);
@@ -38,19 +40,19 @@ export function Buttons() {
     // Get abi and bytecode
     const abi = artifact.abi;
     const bytecode = artifact.bytecode;
-  
+
     // Create a ContractFactory instance
     const signer = await provider.getSigner();
     const factory = new ethers.ContractFactory(abi, bytecode, signer);
-  
+
     // Deploy contract
     const contract = await factory.deploy(...params);
     await contract.waitForDeployment();
-  
+
     // Get contract address
     const address = await contract.getAddress();
     console.log(`Contract deployed at: ${address}`);
-  
+
     return address;
   }
 
@@ -60,7 +62,6 @@ export function Buttons() {
       return;
     }
 
-    setLoading(true);
     try {
       // Prepare params for Proxy contract
       const { chainId } = await provider.getNetwork()
@@ -80,7 +81,8 @@ export function Buttons() {
       const dummyVerifierAddress = await deployContract(dummyVerifierArtifact);
       dispatch(setDummyVerifierAddress(dummyVerifierAddress));
 
-      setLoading(false);
+      setDeployEnabled(true);
+      setAddTxEnabled(false);
     } catch (error) {
       console.error("Error deploying contracts:", error);
     }
@@ -92,7 +94,6 @@ export function Buttons() {
       return;
     }
 
-    setLoading(true);
     try {
       const signer = await provider.getSigner();
       const proxyContract = new ethers.Contract(proxyAddress, proxyArtifact.abi, signer);
@@ -102,15 +103,15 @@ export function Buttons() {
       console.log("Transaction sent:", tx.hash);
 
       // Wait the transaction confirmed
-      const receipt = await tx.wait(); 
+      const receipt = await tx.wait();
       console.log("Transaction confirmed:", receipt.hash);
       console.log("Gas used:", receipt.gasUsed.toString());
       console.log("Status:", receipt.status === 1 ? "Success" : "Failure");
 
-
       console.log("Transaction added successfully!");
 
-      setLoading(false);
+      setAddTxEnabled(true);
+      setVerifierEnabled(false);
     } catch (error) {
       console.error("Error adding transaction:", error);
     }
@@ -122,7 +123,6 @@ export function Buttons() {
       return;
     }
 
-    setLoading(true);
     try {
       const signer = await provider.getSigner();
       const proxyContract = new ethers.Contract(proxyAddress, proxyArtifact.abi, signer);
@@ -131,7 +131,7 @@ export function Buttons() {
       console.log("Transaction sent:", tx.hash);
 
       // Wait the transaction confirmed
-      const receipt = await tx.wait(); 
+      const receipt = await tx.wait();
       console.log("Transaction confirmed:", receipt.hash);
       console.log("Gas used:", receipt.gasUsed.toString());
       console.log("Status:", receipt.status === 1 ? "Success" : "Failure");
@@ -139,7 +139,7 @@ export function Buttons() {
 
       console.log("Verifier set successfully!");
 
-      setLoading(false);
+      setVerifierEnabled(true);
     } catch (error) {
       console.error("Error setting verifier:", error);
     }
@@ -149,19 +149,19 @@ export function Buttons() {
     <>
       <div className="steps">
         <div className="sequence">&#9312;</div>
-        <Button variant="primary" onClick={handleDeploy} disabled={loading}>
+        <Button variant="primary" onClick={handleDeploy} disabled={deployEnabled}>
           DEPLOY CONTRACT
         </Button>
       </div>
       <div className="steps">
         <div className="sequence">&#9313;</div>
-        <Button variant="primary" onClick={handleAddTX} disabled={loading}>
+        <Button variant="primary" onClick={handleAddTX} disabled={addTxEnabled}>
           ADDTX
         </Button>
       </div>
       <div className="steps">
         <div className="sequence">&#9314;</div>
-        <Button variant="primary" onClick={handleSetVerifier}>
+        <Button variant="primary" onClick={handleSetVerifier} disabled={verifierEnabled}>
           SET VERIFIER
         </Button>
       </div>
