@@ -45,7 +45,7 @@ export function Buttons() {
 
   // Use useMemo to make sure provider is created once
   const provider = useMemo(() => {
-    // Use Web3Provider to get browser wallet's signer
+    // Use BrowserProvider to get browser wallet's signer
     if (window.ethereum) {
       return new BrowserProvider(window.ethereum, "any");
     } else {
