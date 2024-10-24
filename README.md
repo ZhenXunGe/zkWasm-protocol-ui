@@ -14,8 +14,7 @@ npx hardhat compile
 cd zkWasm-protocol-ui
 npm install
 ```
-3. Modify `.env`'s `PROVIDER_URL`
-- The default value `http://localhost:8545` is for local hardhat node.
+3. Modify `.env`'s `REACT_APP_PROVIDER_URL`
 - To get infura api key:
 Go to https://infura.io, sign up, create a new API key in its dashboard
 
