@@ -16,3 +16,19 @@ button {
   max-width: 200px; /* Adjust as per your preference */
   padding: 10px 20px; /* Control padding */
 }
+
+.input-group-text > .form-control {
+  display: block;
+}
+
+.proxyInfo {
+  width: 1000px;
+  height: 300px;
+  border: 1px solid black;
+  overflow-y: auto;
+  padding-left: 10px;
+}
+
+.input-group > .queryAddress.form-control {
+  width: 100px;
+}

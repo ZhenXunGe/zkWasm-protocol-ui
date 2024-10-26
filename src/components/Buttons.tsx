@@ -1,10 +1,11 @@
 import React from 'react';
 import Button from 'react-bootstrap/Button';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
+import Form from 'react-bootstrap/Form';
+import Modal from 'react-bootstrap/Modal';
+import InputGroup from 'react-bootstrap/InputGroup';
 import "./button.css";
 import { ethers, Eip1193Provider, BrowserProvider } from 'ethers';
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { BN } from "bn.js";
 import { useAppSelector, useAppDispatch } from "../app/hooks";
 import {
@@ -30,6 +31,16 @@ declare global {
   }
 }
 
+interface ProxyInfo {
+  chain_id: bigint,
+  amount_token: bigint,
+  amount_pool: bigint,
+  owner: string,
+  merkle_root: bigint,
+  rid: bigint,
+  verifier: bigint
+}
+
 export function Buttons() {
   const [deployEnabled, setDeployEnabled] = useState(false);
   const [addTxEnabled, setAddTxEnabled] = useState(true);
@@ -37,7 +48,10 @@ export function Buttons() {
   const [signer, setSigner] = useState<ethers.JsonRpcSigner | null>(null); // Store the connected signer
   const [walletConnected, setWalletConnected] = useState(false); // Track if the wallet is connected
   const [accountAddress, setAccountAddress] = useState<string | null>(null); // Store the connected account address
-
+  const [queryAddress, setQueryAddress] = useState('');
+  const [proxyInfo, setProxyInfo] = useState<ProxyInfo>();
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
   const dispatch = useAppDispatch();
   const proxyAddress = useAppSelector(selectProxyAddress);
   const withdrawAddress = useAppSelector(selectWithdrawAddress);
@@ -178,12 +192,36 @@ export function Buttons() {
       console.log("Gas used:", receipt.gasUsed.toString());
       console.log("Status:", receipt.status === 1 ? "Success" : "Failure");
 
-
       console.log("Verifier set successfully!");
 
       setVerifierEnabled(true);
     } catch (error) {
       console.error("Error setting verifier:", error);
+    }
+  }
+
+  const handleChange = (event: any) => {
+    setQueryAddress(event.target.value);
+  };
+
+  const handleCloseModal = () => setShowErrorModal(false);
+
+  const queryProxyInfo = async () => {
+    setProxyInfo(undefined);
+
+    if (!signer || !queryAddress) {
+      setShowErrorModal(true);
+      setModalMessage("Signer or query address is missing");
+      return;
+    }
+
+    try {
+      const proxyContract = new ethers.Contract(queryAddress, proxyArtifact.abi, signer);
+      const proxyInfo = await proxyContract.getProxyInfo();
+      setProxyInfo(proxyInfo);
+    } catch (error) {
+      setShowErrorModal(true);
+      setModalMessage(String(error));
     }
   }
 
@@ -213,6 +251,49 @@ export function Buttons() {
             <Button variant="primary" onClick={handleSetVerifier} disabled={verifierEnabled}>
               SET VERIFIER
             </Button>
+          </div>
+          <div>
+            <h2>Get Proxy Info</h2>
+            <InputGroup className="mb-3">
+              <Button variant="primary" onClick={queryProxyInfo}>
+                QUERY
+              </Button>
+              <Form.Control
+                placeholder="Proxy Address"
+                aria-label="QueryAddress"
+                aria-describedby="basic-addon1"
+                value={queryAddress}
+                onChange={handleChange}
+                className="queryAddress"
+              />
+            </InputGroup>
+            {proxyInfo ? (
+              <div className="proxyInfo">
+                <p><strong>Chain ID:</strong> {proxyInfo.chain_id.toString()}</p>
+                <p><strong>Amount Token:</strong> {proxyInfo.amount_token.toString()}</p>
+                <p><strong>Amount Pool:</strong> {proxyInfo.amount_pool.toString()}</p>
+                <p><strong>Owner:</strong> {proxyInfo.owner}</p>
+                <p><strong>Merkle Root:</strong> {proxyInfo.merkle_root.toString()}</p>
+                <p><strong>RID:</strong> {proxyInfo.rid.toString()}</p>
+                <p><strong>Verifier:</strong> {proxyInfo.verifier.toString()}</p>
+              </div>
+            ) : (
+              <div className="proxyInfo">
+              </div>
+            )}
+            <Modal show={showErrorModal} onHide={handleCloseModal}>
+              <Modal.Header closeButton>
+                <Modal.Title>Error</Modal.Title>
+              </Modal.Header>
+              <Modal.Body>
+                {modalMessage}
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="secondary" onClick={handleCloseModal}>
+                  Close
+                </Button>
+              </Modal.Footer>
+            </Modal>
           </div>
         </>
       )}
