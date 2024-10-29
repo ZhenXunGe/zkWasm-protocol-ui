@@ -32,3 +32,8 @@ button {
 .input-group > .queryAddress.form-control {
   width: 100px;
 }
+
+.modal-body {
+  max-height: 500px;
+  overflow: auto;
+}

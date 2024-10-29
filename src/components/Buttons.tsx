@@ -78,16 +78,19 @@ export function Buttons() {
         setAccountAddress(accountAddress);  // Store account address
         console.log("Wallet connected:", signer, "Address:", accountAddress);
       } catch (error) {
-        console.error("Error connecting wallet:", error);
+        setShowErrorModal(true);
+        setModalMessage("Error connecting wallet:" + error);
       }
     } else {
-      console.error("No Ethereum wallet found");
+      setShowErrorModal(true);
+      setModalMessage("No Ethereum wallet found");
     }
   };
 
   async function deployContract(artifact: any, params: any[] = []) {
     if (!signer) {
-      console.error("No signer found, please connect wallet first");
+      setShowErrorModal(true);
+      setModalMessage("No signer found, please connect wallet first");
       return;
     }
 
@@ -111,12 +114,14 @@ export function Buttons() {
 
   const handleDeploy = async () => {
     if (!signer) {
-      console.error("No signer found, please connect wallet first");
+      setShowErrorModal(true);
+      setModalMessage("No signer found, please connect wallet first");
       return;
     }
 
     if (proxyAddress) {
-      console.error("Proxy contract is already deployed");
+      setShowErrorModal(true);
+      setModalMessage("Proxy contract is already deployed");
       return;
     }
 
@@ -142,13 +147,15 @@ export function Buttons() {
       setDeployEnabled(true);
       setAddTxEnabled(false);
     } catch (error) {
-      console.error("Error deploying contracts:", error);
+      setShowErrorModal(true);
+      setModalMessage("Error deploying contracts:" + error);
     }
   };
 
   const handleAddTX = async () => {
     if (!signer || !proxyAddress || !withdrawAddress) {
-      console.error("Signer, Proxy or Withdraw address is missing");
+      setShowErrorModal(true);
+      setModalMessage("Signer, Proxy or Withdraw address is missing");
       return;
     }
 
@@ -170,13 +177,15 @@ export function Buttons() {
       setAddTxEnabled(true);
       setVerifierEnabled(false);
     } catch (error) {
-      console.error("Error adding transaction:", error);
+      setShowErrorModal(true);
+      setModalMessage("Error adding transaction:" + error);
     }
   }
 
   const handleSetVerifier = async () => {
     if (!signer || !proxyAddress || !dummyVerifierAddress) {
-      console.error("Signer, Proxy or Dummy Verifier address is missing");
+      setShowErrorModal(true);
+      setModalMessage("Signer, Proxy or Dummy Verifier address is missing");
       return;
     }
 
@@ -196,7 +205,8 @@ export function Buttons() {
 
       setVerifierEnabled(true);
     } catch (error) {
-      console.error("Error setting verifier:", error);
+      setShowErrorModal(true);
+      setModalMessage("Error setting verifier:" + error);
     }
   }
 
@@ -281,22 +291,22 @@ export function Buttons() {
               <div className="proxyInfo">
               </div>
             )}
-            <Modal show={showErrorModal} onHide={handleCloseModal}>
-              <Modal.Header closeButton>
-                <Modal.Title>Error</Modal.Title>
-              </Modal.Header>
-              <Modal.Body>
-                {modalMessage}
-              </Modal.Body>
-              <Modal.Footer>
-                <Button variant="secondary" onClick={handleCloseModal}>
-                  Close
-                </Button>
-              </Modal.Footer>
-            </Modal>
           </div>
         </>
       )}
+      <Modal show={showErrorModal} onHide={handleCloseModal}>
+        <Modal.Header closeButton>
+          <Modal.Title>Error</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {modalMessage}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseModal}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </>
   )
 }
