@@ -19,3 +19,6 @@ The `prepare` script in `package.json` generates artifacts in `zkWasm-protocol`.
 ```
 npm run start
 ```
+
+# Live Demo
+The project is deployed and accessible at: [https://zkwasm-protocol-ui.vercel.app/](https://zkwasm-protocol-ui.vercel.app/)
