@@ -17,6 +17,16 @@ button {
   padding: 10px 20px; /* Control padding */
 }
 
+.setOwner.btn,
+.setMerkle.btn,
+.setSettler.btn,
+.setWithdrawLimit.btn,
+.queryAllTokens.btn,
+.addToken.btn,
+.topUp.btn {
+  margin-top: 20px;
+}
+
 .input-group-text > .form-control {
   display: block;
 }
@@ -36,4 +46,8 @@ button {
 .modal-body {
   max-height: 500px;
   overflow: auto;
+}
+
+.container {
+  margin-bottom: 20px;
 }

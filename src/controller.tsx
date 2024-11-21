@@ -1,13 +1,12 @@
 import React from 'react';
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
-import Modal from 'react-bootstrap/Modal';
 import InputGroup from 'react-bootstrap/InputGroup';
-import "./button.css";
+import "./components/style.css";
 import { ethers, Eip1193Provider, BrowserProvider } from 'ethers';
 import { useState, useMemo } from 'react';
 import { BN } from "bn.js";
-import { useAppSelector, useAppDispatch } from "../app/hooks";
+import { useAppSelector, useAppDispatch } from "./app/hooks";
 import {
   setProxyAddress,
   setWithdrawAddress,
@@ -15,12 +14,19 @@ import {
   selectProxyAddress,
   selectWithdrawAddress,
   selectDummyVerifierAddress
-} from '../data/contractSlice';
-
+} from './data/contractSlice';
+import { ErrorModal } from "./components/ErrorModal";
 import proxyArtifact from "zkWasm-protocol/artifacts/contracts/Proxy.sol/Proxy.json";
 import withdrawArtifact from "zkWasm-protocol/artifacts/contracts/actions/Withdraw.sol/Withdraw.json";
 import dummyVerifierArtifact from "zkWasm-protocol/artifacts/contracts/DummyVerifier.sol/DummyVerifier.json";
-
+import { SetOwner } from './components/SetOwner';
+import { SetMerkle } from './components/SetMerkle';
+import { SetSettler } from './components/SetSettler';
+import { SetWithdrawLimit } from './components/SetWithdrawLimit';
+import { QueryAllTokens } from './components/QueryAllTokens';
+import { AddToken } from './components/AddToken';
+import { TopUp } from './components/TopUp';
+import { SetVerifierImageCommitments } from './components/SetVerifierImageCommitments';
 const providerUrl = process.env["REACT_APP_PROVIDER_URL"];
 const initialRoot = new Uint8Array([166, 157, 178, 62, 35, 83, 140, 56, 9, 235, 134, 184, 20, 145, 63, 43, 245, 186, 75, 233, 43, 42, 187, 217, 104, 152, 219, 89, 125, 199, 161, 9]);
 
@@ -43,8 +49,8 @@ interface ProxyInfo {
 
 export function Buttons() {
   const [deployEnabled, setDeployEnabled] = useState(false);
-  const [addTxEnabled, setAddTxEnabled] = useState(true);
-  const [verifierEnabled, setVerifierEnabled] = useState(true);
+  const [addTxEnabled, setAddTxEnabled] = useState(false);
+  const [actionEnabled, setActionEnabled] = useState(true);
   const [signer, setSigner] = useState<ethers.JsonRpcSigner | null>(null); // Store the connected signer
   const [walletConnected, setWalletConnected] = useState(false); // Track if the wallet is connected
   const [accountAddress, setAccountAddress] = useState<string | null>(null); // Store the connected account address
@@ -145,7 +151,7 @@ export function Buttons() {
       dispatch(setDummyVerifierAddress(dummyVerifierAddress!));
 
       setDeployEnabled(true);
-      setAddTxEnabled(false);
+      setActionEnabled(false);
     } catch (error) {
       setShowErrorModal(true);
       setModalMessage("Error deploying contracts:" + error);
@@ -173,9 +179,7 @@ export function Buttons() {
       console.log("Status:", receipt.status === 1 ? "Success" : "Failure");
 
       console.log("Transaction added successfully!");
-
       setAddTxEnabled(true);
-      setVerifierEnabled(false);
     } catch (error) {
       setShowErrorModal(true);
       setModalMessage("Error adding transaction:" + error);
@@ -202,8 +206,6 @@ export function Buttons() {
       console.log("Status:", receipt.status === 1 ? "Success" : "Failure");
 
       console.log("Verifier set successfully!");
-
-      setVerifierEnabled(true);
     } catch (error) {
       setShowErrorModal(true);
       setModalMessage("Error setting verifier:" + error);
@@ -244,26 +246,104 @@ export function Buttons() {
       ) : (
         <>
           <p>Connected Wallet: {accountAddress}</p> {/* Display the connected account address */}
-          <div className="steps">
-            <div className="sequence">&#9312;</div>
-            <Button variant="primary" onClick={handleDeploy} disabled={deployEnabled}>
-              DEPLOY CONTRACT
-            </Button>
+          <div>
+            <h2>Add New Contracts</h2>
+            <div className="steps">
+              <Button variant="primary" onClick={handleDeploy} disabled={deployEnabled}>
+                DEPLOY CONTRACT
+              </Button>
+            </div>
+            <h3>Contract Actions</h3>
+            <div className="steps">
+              <Button variant="primary" onClick={handleAddTX} disabled={actionEnabled}>
+                ADDTX
+              </Button>
+            </div>
+            <div className="steps">
+              <Button variant="primary" onClick={handleSetVerifier} disabled={actionEnabled}>
+                SET VERIFIER
+              </Button>
+            </div>
+            <div className="steps">
+              <Button variant="primary" onClick={handleSetVerifier} disabled={actionEnabled}>
+                SET VERIFIER IMAGE COMMITMENTS
+              </Button>
+            </div>
           </div>
           <div className="steps">
-            <div className="sequence">&#9313;</div>
-            <Button variant="primary" onClick={handleAddTX} disabled={addTxEnabled}>
-              ADDTX
-            </Button>
+            <SetVerifierImageCommitments
+              signer={signer}
+              proxyAddress={proxyAddress}
+              actionEnabled={actionEnabled}
+              setShowErrorModal={setShowErrorModal}
+              setModalMessage={setModalMessage}
+            />
           </div>
           <div className="steps">
-            <div className="sequence">&#9314;</div>
-            <Button variant="primary" onClick={handleSetVerifier} disabled={verifierEnabled}>
-              SET VERIFIER
-            </Button>
+            <AddToken
+              signer={signer}
+              proxyAddress={proxyAddress}
+              actionEnabled={actionEnabled}
+              setShowErrorModal={setShowErrorModal}
+              setModalMessage={setModalMessage}
+            />
+          </div>
+          <div className="steps">
+            <TopUp
+              signer={signer}
+              proxyAddress={proxyAddress}
+              actionEnabled={actionEnabled}
+              setShowErrorModal={setShowErrorModal}
+              setModalMessage={setModalMessage}
+            />
+          </div>
+          <div className="steps">
+            <SetOwner
+              signer={signer}
+              proxyAddress={proxyAddress}
+              actionEnabled={actionEnabled}
+              setShowErrorModal={setShowErrorModal}
+              setModalMessage={setModalMessage}
+            />
+          </div>
+          <div className="steps">
+            <SetMerkle
+              signer={signer}
+              proxyAddress={proxyAddress}
+              actionEnabled={actionEnabled}
+              setShowErrorModal={setShowErrorModal}
+              setModalMessage={setModalMessage}
+            />
+          </div>
+          <div className="steps">
+            <SetSettler
+              signer={signer}
+              proxyAddress={proxyAddress}
+              actionEnabled={actionEnabled}
+              setShowErrorModal={setShowErrorModal}
+              setModalMessage={setModalMessage}
+            />
+          </div>
+          <div className="steps">
+            <SetWithdrawLimit
+              signer={signer}
+              proxyAddress={proxyAddress}
+              actionEnabled={actionEnabled}
+              setShowErrorModal={setShowErrorModal}
+              setModalMessage={setModalMessage}
+            />
+          </div>
+          <div className="steps">
+            <QueryAllTokens
+              signer={signer}
+              proxyAddress={proxyAddress}
+              actionEnabled={actionEnabled}
+              setShowErrorModal={setShowErrorModal}
+              setModalMessage={setModalMessage}
+            />
           </div>
           <div>
-            <h2>Get Proxy Info</h2>
+            <h2>Query Existing Proxy</h2>
             <InputGroup className="mb-3">
               <Button variant="primary" onClick={queryProxyInfo}>
                 QUERY
@@ -294,19 +374,11 @@ export function Buttons() {
           </div>
         </>
       )}
-      <Modal show={showErrorModal} onHide={handleCloseModal}>
-        <Modal.Header closeButton>
-          <Modal.Title>Error</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {modalMessage}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleCloseModal}>
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ErrorModal
+        show={showErrorModal}
+        onClose={handleCloseModal}
+        message={modalMessage}
+      />
     </>
   )
 }
