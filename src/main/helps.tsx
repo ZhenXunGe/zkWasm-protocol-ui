@@ -1,3 +1,6 @@
+import { ethers } from 'ethers';
+import { Token } from "./types";
+
 export function removeHexPrefix(value: string): string {
   return value.startsWith("0x") ? value.slice(2) : value;
 }
@@ -31,3 +34,21 @@ export function validateHexString (value: string, maxLength: number = 64) {
 
   return null; // Return null if valid
 };
+
+export async function queryAllTokens(
+  proxyContract: ethers.Contract,
+  addLog: (message: string) => void
+) {
+  const tokens = await proxyContract.allTokens();
+  const tokenArray = tokens.map((token: Token) => ({
+    tokenUid: token.token_uid.toString()
+  }));
+  addLog("All tokens:");
+  if(tokenArray.length !== 0) {
+    for(let i = 0; i < tokenArray.length; i++) {
+      addLog(JSON.stringify(tokenArray[i]));
+    }
+  } else {
+    addLog("There no tokens");
+  }
+}

@@ -4,17 +4,21 @@ import Button from 'react-bootstrap/Button';
 import { useState } from 'react';
 import { SetVerifierImageCommitmentsProps } from '../main/props';
 import { removeHexPrefix, validateHexString } from "../main/helps";
+import { useLogger } from '../main/logger/LoggerContext';
 
 export function SetVerifierImageCommitments({signer, proxyAddress, actionEnabled, handleError}: SetVerifierImageCommitmentsProps) {
   const [commitment1, setCommitment1] = useState('');
   const [commitment2, setCommitment2] = useState('');
   const [commitment3, setCommitment3] = useState('');
+  const { addLog, clearLogs } = useLogger();
 
   const handleSetCommitments = async () => {
     if (!signer || !proxyAddress || !commitment1 || !commitment2 || !commitment3) {
       handleError("Signer, Proxy address or commitment is missing");
       return;
     }
+
+    clearLogs(); // Clear existing logs
 
     try {
       validateHexString(commitment1);
@@ -29,15 +33,22 @@ export function SetVerifierImageCommitments({signer, proxyAddress, actionEnabled
         BigInt("0x" + removeHexPrefix(commitment3)),
       ];
       const tx = await proxyContract.setVerifierImageCommitments(commitments);
-      console.log("Transaction sent:", tx.hash);
+      addLog("Transaction sent: " + tx.hash);
 
       // Wait the transaction confirmed
       const receipt = await tx.wait();
-      console.log("Transaction confirmed:", receipt.hash);
-      console.log("Gas used:", receipt.gasUsed.toString());
-      console.log("Status:", receipt.status === 1 ? "Success" : "Failure");
+      addLog("Transaction confirmed: " + receipt.hash);
+      addLog("Gas used: " + receipt.gasUsed.toString());
+      let statueRes = receipt.status === 1 ? "Success" : "Failure";
+      addLog("Status: " + statueRes);
 
-      alert("Commitments set successfully!");
+      // Qeury zk_image_commitments
+      const commitments1 = await proxyContract.zk_image_commitments(0);
+      const commitments2 = await proxyContract.zk_image_commitments(1);
+      const commitments3 = await proxyContract.zk_image_commitments(2);
+      addLog(`Current zk_image_commitments: [${commitments1}, ${commitments2}, ${commitments3}]`);
+
+      addLog("Commitments set successfully!");
     } catch (error) {
       handleError("Error changing root:" + error);
     }
@@ -45,7 +56,7 @@ export function SetVerifierImageCommitments({signer, proxyAddress, actionEnabled
 
   return (
     <div>
-      <h4>SET VERIFIER IMAGE COMMITMENTS</h4>
+      <h4>Set Verifier Image Commitments</h4>
       <div className="setCommitments">
         <label htmlFor="commitment1">Commitment 1</label>
         <input
@@ -81,7 +92,7 @@ export function SetVerifierImageCommitments({signer, proxyAddress, actionEnabled
       </div>
 
       <div>
-        <Button className="setMerkle" variant="primary" onClick={handleSetCommitments} disabled={actionEnabled}>
+        <Button className="setVerifierImgCom" variant="primary" onClick={handleSetCommitments} disabled={actionEnabled}>
           SET VERIFIER IMAGE COMMITMENTS
         </Button>
       </div>

@@ -5,7 +5,8 @@ import Form from 'react-bootstrap/Form';
 import InputGroup from 'react-bootstrap/InputGroup';
 import { useState } from 'react';
 import { ModifyTokenProps } from '../main/props';
-import { formatAddress, validateHexString } from "../main/helps";
+import { formatAddress, validateHexString, queryAllTokens } from "../main/helps";
+import { useLogger } from '../main/logger/LoggerContext';
 
 // Validate if the index is a valid uint32 (between 0 and 2^32 - 1)
 const validateIndex = (index: number) => {
@@ -15,12 +16,15 @@ const validateIndex = (index: number) => {
 export function ModifyToken({signer, proxyAddress, actionEnabled, handleError}: ModifyTokenProps) {
   const [index, setIndex] = useState(0);
   const [tokenAddress, setTokenAddress] = useState('');
+  const { addLog, clearLogs } = useLogger();
 
   const handleModifyToken = async () => {
     if (!signer || !proxyAddress || !tokenAddress) {
       handleError("Signer, Proxy address, token index or tokenUid is missing");
       return;
     }
+
+    clearLogs(); // Clear existing logs
 
     try {
       // Validate index (uint32)
@@ -36,11 +40,11 @@ export function ModifyToken({signer, proxyAddress, actionEnabled, handleError}: 
       // Ensure the token address is a valid Ethereum address
       let formattedAddress = formatAddress(tokenAddress);
       const validTokenAddress = ethers.getAddress(formattedAddress);
-      console.log("Valid Address:", validTokenAddress)
+      addLog("Valid Address: " + validTokenAddress)
 
       // Call the _l1_address function with the valid token address
       const l1token = await proxyContract._l1_address(validTokenAddress)
-      console.log("tokenaddr, l1tokenaddr(encoded)", tokenAddress, l1token);
+      addLog("tokenaddr: " + tokenAddress + ", l1tokenaddr(encoded): " + l1token);
 
       const isLocal = await proxyContract._is_local(l1token)
       if(!isLocal) {
@@ -49,15 +53,19 @@ export function ModifyToken({signer, proxyAddress, actionEnabled, handleError}: 
 
       // Call the modifyToken function
       const tx = await proxyContract.modifyToken(index, l1token);
-      console.log("Transaction sent:", tx.hash);
+      addLog("Transaction sent: " + tx.hash);
 
       // Wait the transaction confirmed
       const receipt = await tx.wait();
-      console.log("Transaction confirmed:", receipt.hash);
-      console.log("Gas used:", receipt.gasUsed.toString());
-      console.log("Status:", receipt.status === 1 ? "Success" : "Failure");
+      addLog("Transaction confirmed: " + receipt.hash);
+      addLog("Gas used: " + receipt.gasUsed.toString());
+      let statueRes = receipt.status === 1 ? "Success" : "Failure";
+      addLog("Status: " + statueRes);
 
-      alert('Token successfully modified!');
+      // Qeury all tokens
+      queryAllTokens(proxyContract, addLog);
+
+      addLog('Token successfully modified!');
     } catch (error) {
       handleError("Error adding token:" + error);
     }
@@ -87,7 +95,7 @@ export function ModifyToken({signer, proxyAddress, actionEnabled, handleError}: 
           required
         />
       </InputGroup>
-      <Button className="addToken" variant="primary" onClick={handleModifyToken} disabled={actionEnabled}>
+      <Button className="modifyToken" variant="primary" onClick={handleModifyToken} disabled={actionEnabled}>
         Modify TOKEN
       </Button>
     </div>

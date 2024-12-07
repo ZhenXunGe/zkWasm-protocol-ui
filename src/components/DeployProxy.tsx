@@ -2,31 +2,26 @@ import { useMemo } from 'react';
 import { ethers } from 'ethers';
 import Button from 'react-bootstrap/Button';
 import { useAppDispatch } from "../app/hooks";
-import { useState } from 'react';
-import { Action } from '@reduxjs/toolkit';
 import BN from "bn.js";
 import { BrowserProvider } from 'ethers';
-import { DeployContractProps } from '../main/props';
-import {
-  setProxyAddress,
-  setWithdrawAddress,
-  setDummyVerifierAddress
-} from '../data/contractSlice';
+import { DeployProxyProps } from '../main/props';
+import { setProxyAddress } from '../data/contractSlice';
 import proxyArtifact from "zkWasm-protocol/artifacts/contracts/Proxy.sol/Proxy.json";
-import withdrawArtifact from "zkWasm-protocol/artifacts/contracts/actions/Withdraw.sol/Withdraw.json";
-import dummyVerifierArtifact from "zkWasm-protocol/artifacts/contracts/DummyVerifier.sol/DummyVerifier.json";
+import { useLogger } from '../main/logger/LoggerContext';
 
 const initialRoot = new Uint8Array([166, 157, 178, 62, 35, 83, 140, 56, 9, 235, 134, 184, 20, 145, 63, 43, 245, 186, 75, 233, 43, 42, 187, 217, 104, 152, 219, 89, 125, 199, 161, 9]);
 const providerUrl = process.env["REACT_APP_PROVIDER_URL"];
 
-export function DeployContract({
+export function DeployProxy({
   signer,
   proxyAddress,
+  actionEnabled,
   setActionEnabled,
+  setAddTXEnabled,
   handleError
-}: DeployContractProps) {
+}: DeployProxyProps) {
   const dispatch = useAppDispatch();
-  const [deployEnabled, setDeployEnabled] = useState(false);
+  const { addLog } = useLogger();
 
   // Use useMemo to make sure provider is created once
   const provider = useMemo(() => {
@@ -43,25 +38,25 @@ export function DeployContract({
     const abi = artifact.abi;
     const bytecode = artifact.bytecode;
 
+    addLog("Start deploying contract...");
+
     // Create a ContractFactory instance
     const factory = new ethers.ContractFactory(abi, bytecode, signer);
+    addLog("ContractFactory created successfully, start deploying...");
 
     // Deploy contract
     const contract = await factory.deploy(...params);
+    addLog("Transacton was sent, wait for confirm...");
+    addLog("Transaction hash: " + contract.deploymentTransaction()!.hash);
+
     await contract.waitForDeployment();
 
     // Get contract address
     const address = await contract.getAddress();
-    console.log(`Contract deployed at: ${address}`);
+    addLog("Contract deployed successfully!");
+    addLog(`Contract address is: ${address}`);
 
     return address;
-  }
-
-  const deployContractWithDispatch = async (artifact: any, params: bigint[], dispatchAction: (address: string) => Action) => {
-    const address = await deployContract(artifact, params);
-    if(address) {
-      dispatch(dispatchAction(address));
-    }
   }
 
   const handleDeploy = async () => {
@@ -78,28 +73,28 @@ export function DeployContract({
     try {
       // Prepare params for Proxy contract
       const { chainId } = await provider.getNetwork();
-      console.log("netid:", chainId);
+      addLog("netid: " + chainId);
       const rootBn = new BN(initialRoot, 16, "be");
       const rootBigInt = BigInt("0x" + rootBn.toString(16));
 
-      // Deploy contracts
-      await deployContractWithDispatch(proxyArtifact, [chainId, rootBigInt], setProxyAddress);
-      await deployContractWithDispatch(withdrawArtifact, [], setWithdrawAddress);
-      await deployContractWithDispatch(dummyVerifierArtifact, [], setDummyVerifierAddress);
+      const address = await deployContract(proxyArtifact, [chainId, rootBigInt]);
+      if(address) {
+        dispatch(setProxyAddress(address));
+      }
 
-      setDeployEnabled(true);
       setActionEnabled(false);
+      setAddTXEnabled(false);
     } catch (error) {
-      handleError("Error deploying contracts:" + error);
+      handleError("Error deploying proxy:" + error);
     }
   };
 
   return (
     <div>
-      <h4>Add New Contracts</h4>
+      <h4>Deploy Proxy</h4>
       <div className="steps">
-        <Button variant="primary" onClick={handleDeploy} disabled={deployEnabled}>
-          DEPLOY CONTRACT
+        <Button variant="primary" onClick={handleDeploy} disabled={!actionEnabled}>
+          DEPLOY PROXY
         </Button>
       </div>
     </div>

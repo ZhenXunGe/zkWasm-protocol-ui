@@ -2,15 +2,11 @@ import Button from 'react-bootstrap/Button';
 import { ethers, Eip1193Provider, BrowserProvider } from 'ethers';
 import { useState } from 'react';
 import { useAppSelector } from "../app/hooks";
-import {
-  selectProxyAddress,
-  selectWithdrawAddress,
-  selectDummyVerifierAddress
-} from '../data/contractSlice';
+import { selectProxyAddress } from '../data/contractSlice';
 import {
   AddTXProps,
   AddTokenProps,
-  DeployContractProps,
+  DeployProxyProps,
   ErrorModalProps,
   ModifyTokenProps,
   QueryAllTokensProps,
@@ -33,11 +29,13 @@ import { QueryAllTokens } from '../components/QueryAllTokens';
 import { AddToken } from '../components/AddToken';
 import { TopUp } from '../components/TopUp';
 import { SetVerifierImageCommitments } from '../components/SetVerifierImageCommitments';
-import { QueryExistingProxy } from '../components/queryexistingproxy/QueryExistingProxy';
+import { QueryExistingProxy } from '../components/QueryExistingProxy';
 import { SetVerifier } from '../components/SetVerifier';
 import { AddTX } from '../components/AddTX';
 import { ModifyToken } from '../components/ModifyToken';
-import { DeployContract } from '../components/DeployContract';
+import { DeployProxy } from '../components/DeployProxy';
+import { LoggerProvider } from './logger/LoggerContext';
+import { LogViewer } from './logger/LogViewer';
 import "../components/style.css";
 
 // extend window interface for ts to recognize ethereum
@@ -52,7 +50,7 @@ type ComponentWithProps = {
   props:
   AddTXProps
   | AddTokenProps
-  | DeployContractProps
+  | DeployProxyProps
   | ErrorModalProps
   | ModifyTokenProps
   | QueryAllTokensProps
@@ -68,6 +66,7 @@ type ComponentWithProps = {
 
 export function GameController() {
   const [actionEnabled, setActionEnabled] = useState(true);
+  const [addTXEnabled, setAddTXEnabled] = useState(true);
   const [signer, setSigner] = useState<ethers.JsonRpcSigner | null>(null); // Store the connected signer
   const [walletConnected, setWalletConnected] = useState(false); // Track if the wallet is connected
   const [accountAddress, setAccountAddress] = useState<string | null>(null); // Store the connected account address
@@ -75,8 +74,6 @@ export function GameController() {
   const [modalMessage, setModalMessage] = useState("");
 
   const proxyAddress = useAppSelector(selectProxyAddress);
-  const withdrawAddress = useAppSelector(selectWithdrawAddress);
-  const dummyVerifierAddress = useAppSelector(selectDummyVerifierAddress);
 
   const handleConnectWallet = async () => {
     if (window.ethereum) {
@@ -104,9 +101,9 @@ export function GameController() {
   }
 
   const components: ComponentWithProps[] = [
-    { Component: DeployContract, props: { signer, proxyAddress, setActionEnabled, handleError } },
-    { Component: AddTX, props: { signer, proxyAddress, actionEnabled, withdrawAddress, handleError } },
-    { Component: SetVerifier, props: { signer, proxyAddress, actionEnabled, dummyVerifierAddress, handleError } },
+    { Component: DeployProxy, props: { signer, proxyAddress, actionEnabled, setActionEnabled, setAddTXEnabled, handleError } },
+    { Component: AddTX, props: { signer, proxyAddress, addTXEnabled, setAddTXEnabled, handleError } },
+    { Component: SetVerifier, props: { signer, proxyAddress, actionEnabled, handleError } },
     { Component: SetVerifierImageCommitments, props: { signer, proxyAddress, actionEnabled, handleError } },
     { Component: AddToken, props: { signer, proxyAddress, actionEnabled, handleError } },
     { Component: ModifyToken, props: { signer, proxyAddress, actionEnabled, handleError } },
@@ -129,9 +126,12 @@ export function GameController() {
         <>
           <p>Connected Wallet: {accountAddress}</p> {/* Display the connected account address */}
           {components.map(({ Component, props }, index) => (
-            <div className="steps" key={index}>
-              <Component {...props} />
-            </div>
+            <LoggerProvider key={index}>
+              <div className="steps">
+                <Component {...props} />
+                <LogViewer />
+              </div>
+            </LoggerProvider>
           ))}
         </>
       )}

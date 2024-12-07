@@ -4,32 +4,30 @@ import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import InputGroup from 'react-bootstrap/InputGroup';
 import { useState } from 'react';
-import { QueryExistingProxyProps } from '../../main/props';
+import { QueryExistingProxyProps } from '../main/props';
 import {
   EventType,
   TopUpEvent,
   WithDrawEvent,
-  SettledEvent,
-  ProxyInfo
- } from "../../main/types";
-import EventTable from "./EventTable";
+  SettledEvent
+ } from "../main/types";
+import { useLogger } from '../main/logger/LoggerContext';
 
 export function QueryExistingProxy({signer, handleError}: QueryExistingProxyProps) {
   const [queryAddress, setQueryAddress] = useState('');
-  const [proxyInfo, setProxyInfo] = useState<ProxyInfo>();
-  const [events, setEvents] = useState<EventType[]>([]);
+  const { addLog, clearLogs } = useLogger();
 
   const handleChange = (event: any) => {
     setQueryAddress(event.target.value);
   };
 
   const queryProxyInfo = async () => {
-    setProxyInfo(undefined);
-
     if (!signer || !queryAddress) {
       handleError("Signer or query address is missing");
       return;
     }
+
+    clearLogs(); // Clear existing logs
 
     try {
       // Get proxy info
@@ -41,7 +39,6 @@ export function QueryExistingProxy({signer, handleError}: QueryExistingProxyProp
         handleError("Error querying existing Proxy: The address may not belong to a Proxy contract");
         return;
       });
-      setProxyInfo(proxyInfo);
 
       // Get all events
       const eventFilters = [
@@ -88,7 +85,27 @@ export function QueryExistingProxy({signer, handleError}: QueryExistingProxyProp
             return null; // skip other events
         }
       }).filter((event): event is EventType => event !== null); // remove null
-      setEvents(parsedEvents);
+
+      if (proxyInfo) {
+        addLog(`Chain ID: ${proxyInfo.chain_id.toString()}`);
+        addLog(`Amount Token: ${proxyInfo.amount_token.toString()}`);
+        addLog(`Amount Pool: ${proxyInfo.amount_pool.toString()}`);
+        addLog(`Owner: ${proxyInfo.owner}`);
+        addLog(`Merkle Root: ${proxyInfo.merkle_root.toString()}`);
+        addLog(`RID: ${proxyInfo.rid.toString()}`);
+        addLog(`Verifier: ${proxyInfo.verifier.toString()}`);
+        
+        if (parsedEvents && parsedEvents.length > 0) {
+          addLog('Historical Events:');
+          parsedEvents.forEach((event, index) => {
+            addLog(`${JSON.stringify(event)}`);
+          });
+        } else {
+          addLog('No Historical Events available.');
+        }
+      } else {
+        addLog('No Proxy Info available.');
+      }
     } catch (error) {
       handleError("Error querying existing Proxy: " + error);
     }
@@ -102,7 +119,7 @@ export function QueryExistingProxy({signer, handleError}: QueryExistingProxyProp
           QUERY
         </Button>
         <Form.Control
-          placeholder="Proxy Address"
+          placeholder="Enter Proxy address as hex string"
           aria-label="QueryAddress"
           aria-describedby="basic-addon1"
           value={queryAddress}
@@ -110,24 +127,6 @@ export function QueryExistingProxy({signer, handleError}: QueryExistingProxyProp
           className="queryAddress"
         />
       </InputGroup>
-      {proxyInfo ? (
-        <div className="proxyInfo">
-          <p><strong>Chain ID:</strong> {proxyInfo.chain_id.toString()}</p>
-          <p><strong>Amount Token:</strong> {proxyInfo.amount_token.toString()}</p>
-          <p><strong>Amount Pool:</strong> {proxyInfo.amount_pool.toString()}</p>
-          <p><strong>Owner:</strong> {proxyInfo.owner}</p>
-          <p><strong>Merkle Root:</strong> {proxyInfo.merkle_root.toString()}</p>
-          <p><strong>RID:</strong> {proxyInfo.rid.toString()}</p>
-          <p><strong>Verifier:</strong> {proxyInfo.verifier.toString()}</p>
-          <div>
-            <h4>Historical Events</h4>
-            <EventTable events={events} />
-          </div>
-        </div>
-      ) : (
-        <div className="proxyInfo">
-        </div>
-      )}
     </div>
   )
 }

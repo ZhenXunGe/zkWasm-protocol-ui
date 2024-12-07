@@ -25,16 +25,6 @@ export interface SettledEvent {
 
 export type EventType = TopUpEvent | WithDrawEvent | SettledEvent;
 
-export interface ProxyInfo {
-  chain_id: bigint,
-  amount_token: bigint,
-  amount_pool: bigint,
-  owner: string,
-  merkle_root: bigint,
-  rid: bigint,
-  verifier: bigint
-}
-
 export interface Token {
   token_uid: bigint;
 }
