@@ -3,8 +3,8 @@ import { Form, Button, Table } from "react-bootstrap";
 import { ethers } from "ethers";
 import proxyArtifact from "zkWasm-protocol/artifacts/contracts/Proxy.sol/Proxy.json";
 import { TopUpProps } from '../main/props';
-import { TopUpEvent } from "../main/types";
 import { removeHexPrefix, validateHexString } from "../main/helps";
+import { useLogger } from '../main/logger/LoggerContext';
 
 // The token we use is ERC20 token
 const erc20ABI = [
@@ -34,7 +34,7 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
   const [pid1, setPid1] = useState("");
   const [pid2, setPid2] = useState("");
   const [amount, setAmount] = useState("");
-  const [events, setEvents] = useState<TopUpEvent[]>([]);
+  const { addLog } = useLogger();
 
   const handleTopUp = async () => {
     if (!signer || !proxyAddress || !tidx || !amount || !pid1 || !pid2) {
@@ -67,13 +67,14 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
 
       const tokenContract = new ethers.Contract(formatTokenAddress, erc20ABI, signer);
       var tx = await tokenContract.approve(proxyAddress, amountWei);
-      console.log("Approve Transaction sent:", tx.hash);
+      addLog("Approve Transaction sent: " + tx.hash);
 
       // Wait the transaction confirmed
       const approveReceipt = await tx.wait();
-      console.log("Approve Transaction confirmed:", approveReceipt.hash);
-      console.log("Approve Gas used:", approveReceipt.gasUsed.toString());
-      console.log("Approve Status:", approveReceipt.status === 1 ? "Success" : "Failure");
+      addLog("Approve Transaction confirmed: " + approveReceipt.hash);
+      addLog("Approve Gas used: " + approveReceipt.gasUsed.toString());
+      let approveRes = approveReceipt.status === 1 ? "Success" : "Failure";
+      addLog("Approve Status: " + approveRes);
 
       const result = await proxyContract.topup(
         BigInt("0x" + tidxNoPrefix),
@@ -81,13 +82,14 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
         BigInt("0x" + pid2NoPrefix),
         amountWei
       );
-      console.log("Topup Transaction sent:", result.hash);
+      addLog("Topup Transaction sent: " + result.hash);
 
       // Wait the transaction confirmed
       const receipt = await result.wait();
-      console.log("Topup Transaction confirmed:", receipt.hash);
-      console.log("Topup Gas used:", receipt.gasUsed.toString());
-      console.log("Topup Status:", receipt.status === 1 ? "Success" : "Failure");
+      addLog("Topup Transaction confirmed: " + receipt.hash);
+      addLog("Topup Gas used: " + receipt.gasUsed.toString());
+      let topupRes = receipt.status === 1 ? "Success" : "Failure";
+      addLog("Topup Status: " + topupRes);
 
       alert("TopUp successful! Check events of TopUp below for details.");
 
@@ -106,7 +108,15 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
           amount: ethers.formatUnits(args[4], "wei"),
         };
       });
-      setEvents(parsedEvents);
+
+      if (parsedEvents && parsedEvents.length > 0) {
+        addLog('Historical TopUp Events:');
+        parsedEvents.forEach((event) => {
+          addLog(`${JSON.stringify(event)}`);
+        });
+      } else {
+        addLog('No Historical TopUp Events available.');
+      }
     } catch (error) {
       handleError("Error TopUp:" + error);
     }
@@ -158,35 +168,6 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
       <Button className="topUp" variant="primary" onClick={handleTopUp} disabled={actionEnabled}>
         TOP-UP
       </Button>
-      <h5 className="mt-4">Historical TopUp Events</h5>
-      {events.length === 0 ? (
-        <p>No events found.</p>
-      ) : (
-        <Table striped bordered hover>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Token</th>
-              <th>Account</th>
-              <th>Pid1</th>
-              <th>Pid2</th>
-              <th>Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {events.map((event: TopUpEvent, index: number) => (
-              <tr key={index}>
-                <td>{event.name}</td>
-                <td>{event.token}</td>
-                <td>{event.account}</td>
-                <td>{event.pid1}</td>
-                <td>{event.pid2}</td>
-                <td>{event.amount}</td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      )}
     </div>
   );
 };

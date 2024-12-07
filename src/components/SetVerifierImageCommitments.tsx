@@ -4,11 +4,13 @@ import Button from 'react-bootstrap/Button';
 import { useState } from 'react';
 import { SetVerifierImageCommitmentsProps } from '../main/props';
 import { removeHexPrefix, validateHexString } from "../main/helps";
+import { useLogger } from '../main/logger/LoggerContext';
 
 export function SetVerifierImageCommitments({signer, proxyAddress, actionEnabled, handleError}: SetVerifierImageCommitmentsProps) {
   const [commitment1, setCommitment1] = useState('');
   const [commitment2, setCommitment2] = useState('');
   const [commitment3, setCommitment3] = useState('');
+  const { addLog } = useLogger();
 
   const handleSetCommitments = async () => {
     if (!signer || !proxyAddress || !commitment1 || !commitment2 || !commitment3) {
@@ -29,13 +31,14 @@ export function SetVerifierImageCommitments({signer, proxyAddress, actionEnabled
         BigInt("0x" + removeHexPrefix(commitment3)),
       ];
       const tx = await proxyContract.setVerifierImageCommitments(commitments);
-      console.log("Transaction sent:", tx.hash);
+      addLog("Transaction sent: " + tx.hash);
 
       // Wait the transaction confirmed
       const receipt = await tx.wait();
-      console.log("Transaction confirmed:", receipt.hash);
-      console.log("Gas used:", receipt.gasUsed.toString());
-      console.log("Status:", receipt.status === 1 ? "Success" : "Failure");
+      addLog("Transaction confirmed: " + receipt.hash);
+      addLog("Gas used: " + receipt.gasUsed.toString());
+      let statueRes = receipt.status === 1 ? "Success" : "Failure";
+      addLog("Status: " + statueRes);
 
       alert("Commitments set successfully!");
     } catch (error) {
@@ -81,7 +84,7 @@ export function SetVerifierImageCommitments({signer, proxyAddress, actionEnabled
       </div>
 
       <div>
-        <Button className="setMerkle" variant="primary" onClick={handleSetCommitments} disabled={actionEnabled}>
+        <Button className="setVerifierImgCom" variant="primary" onClick={handleSetCommitments} disabled={actionEnabled}>
           SET VERIFIER IMAGE COMMITMENTS
         </Button>
       </div>
