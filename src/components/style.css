@@ -8,7 +8,7 @@ button {
 }
 
 .steps {
-  margin: 10px;
+  margin: 10px auto;
 }
 
 .connectWallet.btn {
@@ -17,14 +17,15 @@ button {
   padding: 10px 20px; /* Control padding */
 }
 
-.setOwner.btn,
-.setMerkle.btn,
-.setSettler.btn,
-.setWithdrawLimit.btn,
+.setCommitments,
 .queryAllTokens.btn,
-.addToken.btn,
+.modifyToken.btn,
 .topUp.btn,
-.setCommitments {
+.setVerifierImgCom.btn {
+  margin-bottom: 20px;
+}
+
+.topUp.btn {
   margin-top: 20px;
 }
 
@@ -36,9 +37,9 @@ button {
   display: block;
 }
 
-.proxyInfo {
+.logs {
   width: 90vw;
-  height: 300px;
+  height: 200px;
   border: 1px solid black;
   overflow: auto;
   padding: 10px;

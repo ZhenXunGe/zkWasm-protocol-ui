@@ -2,12 +2,15 @@ import { ethers } from 'ethers';
 import proxyArtifact from "zkWasm-protocol/artifacts/contracts/Proxy.sol/Proxy.json";
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
+import InputGroup from 'react-bootstrap/InputGroup';
 import { useState } from 'react';
 import { SetWithdrawLimitProps } from '../main/props';
 import { removeHexPrefix, validateHexString } from "../main/helps";
+import { useLogger } from '../main/logger/LoggerContext';
 
 export function SetWithdrawLimit({signer, proxyAddress, actionEnabled, handleError}: SetWithdrawLimitProps) {
   const [withdrawLimit, setWithdrawLimit] = useState('');
+  const { addLog, clearLogs } = useLogger();
 
   const handleSetWithdrawLimit = async () => {
     if (!signer || !proxyAddress || !withdrawLimit) {
@@ -15,10 +18,16 @@ export function SetWithdrawLimit({signer, proxyAddress, actionEnabled, handleErr
       return;
     }
 
+    clearLogs(); // Clear existing logs
+
     try {
       validateHexString(withdrawLimit);
 
       const proxyContract = new ethers.Contract(proxyAddress, proxyArtifact.abi, signer);
+
+      // Query current withdrawLimit
+      const amountBeforeSet = await proxyContract.withdrawLimit();
+      addLog("withdrawLimit before set withdrawLimit: " + amountBeforeSet);
 
       // If withdrawLimit starts with "0x", remove "0x"
       const withdrawLimitNoPrefix =  removeHexPrefix(withdrawLimit);
@@ -27,15 +36,20 @@ export function SetWithdrawLimit({signer, proxyAddress, actionEnabled, handleErr
       const withdrawLimitBigInt = BigInt("0x" + withdrawLimitNoPrefix);
 
       const tx = await proxyContract.setWithdrawLimit(withdrawLimitBigInt);
-      console.log("Transaction sent:", tx.hash);
+      addLog("Transaction sent: " + tx.hash);
 
       // Wait the transaction confirmed
       const receipt = await tx.wait();
-      console.log("Transaction confirmed:", receipt.hash);
-      console.log("Gas used:", receipt.gasUsed.toString());
-      console.log("Status:", receipt.status === 1 ? "Success" : "Failure");
+      addLog("Transaction confirmed: " + receipt.hash);
+      addLog("Gas used: " + receipt.gasUsed.toString());
+      let statueRes = receipt.status === 1 ? "Success" : "Failure";
+      addLog("Status: " + statueRes);
 
-      alert("withdrawLimit changed successfully!");
+      // Query current withdrawLimit
+      const amountAfterSet = await proxyContract.withdrawLimit();
+      addLog("withdrawLimit after set withdrawLimit: : " + amountAfterSet);
+
+      addLog("withdrawLimit changed successfully!");
     } catch (error) {
       handleError("Error changing withdrawLimit:" + error);
     }
@@ -44,7 +58,10 @@ export function SetWithdrawLimit({signer, proxyAddress, actionEnabled, handleErr
   return (
     <div>
       <h4>Set Withdraw Limit</h4>
-      <Form.Group controlId="formMerkle">
+      <InputGroup className="mb-3">
+        <Button variant="primary" onClick={handleSetWithdrawLimit} disabled={actionEnabled}>
+          SET Withdraw Limit
+        </Button>
         <Form.Control
           type="text"
           placeholder="Enter max withdraw amount per settle as hex string(uint256)"
@@ -52,10 +69,7 @@ export function SetWithdrawLimit({signer, proxyAddress, actionEnabled, handleErr
           onChange={(e) => setWithdrawLimit(e.target.value)}
           required
         />
-      </Form.Group>
-      <Button className="setWithdrawLimit" variant="primary" onClick={handleSetWithdrawLimit} disabled={actionEnabled}>
-        SET Withdraw Limit
-      </Button>
+      </InputGroup>
     </div>
   )
 }

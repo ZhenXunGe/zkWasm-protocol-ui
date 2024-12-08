@@ -3,8 +3,8 @@ import { ethers } from 'ethers';
 export interface AddTXProps {
   signer: ethers.JsonRpcSigner | null;
   proxyAddress: string | null;
-  actionEnabled: boolean;
-  withdrawAddress: string | null;
+  addTXEnabled: boolean;
+  setAddTXEnabled:  React.Dispatch<React.SetStateAction<boolean>>;
   handleError: (error: string) => void;
 }
 
@@ -15,10 +15,12 @@ export interface AddTokenProps {
   handleError: (error: string) => void;
 }
 
-export interface DeployContractProps {
+export interface DeployProxyProps {
   signer: ethers.JsonRpcSigner | null;
   proxyAddress: string | null;
+  actionEnabled: boolean;
   setActionEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  setAddTXEnabled:  React.Dispatch<React.SetStateAction<boolean>>;
   handleError: (error: string) => void;
 }
 
@@ -72,7 +74,6 @@ export interface SetVerifierProps {
   signer: ethers.JsonRpcSigner | null;
   proxyAddress: string | null;
   actionEnabled: boolean;
-  dummyVerifierAddress: string | null;
   handleError: (error: string) => void;
 }
 
