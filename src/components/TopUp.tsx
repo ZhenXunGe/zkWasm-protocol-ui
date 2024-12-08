@@ -130,7 +130,7 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
       const balanceAfterTopup = await tokenContract.balanceOf(proxyAddress);
       addLog("The balance of the Proxy contract after topup is: " + balanceAfterTopup);
 
-      addLog("TopUp successful!");
+      addLog("Topup executed successfully!");
     } catch (error) {
       handleError("Error TopUp:" + error);
     }

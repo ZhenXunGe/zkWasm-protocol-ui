@@ -65,7 +65,7 @@ export function ModifyToken({signer, proxyAddress, actionEnabled, handleError}: 
       // Qeury all tokens
       queryAllTokens(proxyContract, addLog);
 
-      addLog('Token successfully modified!');
+      addLog('Token modified successfully!');
     } catch (error) {
       handleError("Error adding token:" + error);
     }
