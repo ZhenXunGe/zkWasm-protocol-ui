@@ -1,10 +1,12 @@
+import React from "react";
 import { useState } from "react";
 import { Form, Button } from "react-bootstrap";
 import { ethers } from "ethers";
 import proxyArtifact from "zkWasm-protocol/artifacts/contracts/Proxy.sol/Proxy.json";
 import { TopUpProps } from '../main/props';
-import { removeHexPrefix, validateHexString } from "../main/helps";
+import { formatAddress, removeHexPrefix, validateHexString } from "../main/helps";
 import { useLogger } from '../main/logger/LoggerContext';
+import InputGroup from 'react-bootstrap/InputGroup';
 
 // The token we use is ERC20 token
 const erc20ABI = [
@@ -35,18 +37,32 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
   const [pid1, setPid1] = useState("");
   const [pid2, setPid2] = useState("");
   const [amount, setAmount] = useState("");
+  const [manualProxyAddress, setManualProxyAddress] = useState(""); // Proxy address now user-inputted
+  const [useManualProxyInput, setuseManualProxyInput] = useState(true); // Switch for manual/Auto Proxy Mode
   const { addLog, clearLogs } = useLogger();
 
   const handleTopUp = async () => {
-    if (!signer || !proxyAddress || !tidx || !amount || !pid1 || !pid2) {
-      handleError("Signer, Proxy address, tidx, amount, pid1 or pid2 is missing");
-      return;
-    }
-
-    clearLogs(); // Clear existing logs
-
     try {
-      const proxyContract = new ethers.Contract(proxyAddress, proxyArtifact.abi, signer);
+      if (!signer || !tidx || !amount || !pid1 || !pid2) {
+        throw new Error("Signer, tidx, amount, pid1 or pid2 is missing");
+      }
+
+      // Resolve Proxy address based on mode
+      const resolvedProxyAddress = useManualProxyInput ? manualProxyAddress : proxyAddress;
+
+      if (!resolvedProxyAddress) {
+        throw new Error("Proxy address is missing");
+      }
+
+      clearLogs(); // Clear existing logs
+
+      // Validate Proxy address
+      validateHexString(resolvedProxyAddress, 40);
+      const formattedProxyAddress = formatAddress(resolvedProxyAddress);
+      const validProxyAddress = ethers.getAddress(formattedProxyAddress);
+      addLog("Valid Proxy address: " + validProxyAddress);
+
+      const proxyContract = new ethers.Contract(validProxyAddress, proxyArtifact.abi, signer);
 
       // Make sue tidx and amount is in the scope of uint128
       validateHexString(tidx, 32);
@@ -76,14 +92,14 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
       console.log(balanceBeforeTopup)
       addLog("The balance of the Proxy contract before topup is: " + balanceBeforeTopup);
 
-      var tx = await tokenContract.approve(proxyAddress, amountWei);
+      const tx = await tokenContract.approve(proxyAddress, amountWei);
       addLog("Approve Transaction sent: " + tx.hash);
 
       // Wait the transaction confirmed
       const approveReceipt = await tx.wait();
       addLog("Approve Transaction confirmed: " + approveReceipt.hash);
       addLog("Approve Gas used: " + approveReceipt.gasUsed.toString());
-      let approveRes = approveReceipt.status === 1 ? "Success" : "Failure";
+      const approveRes = approveReceipt.status === 1 ? "Success" : "Failure";
       addLog("Approve Status: " + approveRes);
 
       const result = await proxyContract.topup(
@@ -98,7 +114,7 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
       const receipt = await result.wait();
       addLog("Topup Transaction confirmed: " + receipt.hash);
       addLog("Topup Gas used: " + receipt.gasUsed.toString());
-      let topupRes = receipt.status === 1 ? "Success" : "Failure";
+      const topupRes = receipt.status === 1 ? "Success" : "Failure";
       addLog("Topup Status: " + topupRes);
 
       // Query Events
@@ -139,8 +155,33 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
   return (
     <div>
       <h4>Topup Your Ethereum Wallet</h4>
-      <Form.Group controlId="formTidx">
-        <Form.Label>Token Index</Form.Label>
+
+      {/* Mode switch */}
+      <InputGroup className="mb-3">
+        <Form.Check
+          type="switch"
+          id="manual-auto-switch"
+          label={useManualProxyInput ? "Manual Proxy Mode" : "Auto Proxy Mode"}
+          checked={useManualProxyInput}
+          onChange={() => setuseManualProxyInput(!useManualProxyInput)}
+        />
+      </InputGroup>
+
+      {/* Input field for manual Proxy address */}
+      <InputGroup className="mb-3">
+        <InputGroup.Text>Proxy Address</InputGroup.Text>
+        <Form.Control
+          type="text"
+          placeholder="Enter Proxy address as hex string"
+          value={useManualProxyInput ? manualProxyAddress : proxyAddress || "No deployed Proxy address available"}
+          onChange={(e) => setManualProxyAddress(e.target.value)}
+          disabled={!useManualProxyInput}
+          required
+        />
+      </InputGroup>
+
+      <InputGroup className="mb-3">
+        <InputGroup.Text>Token Index</InputGroup.Text>
         <Form.Control
           type="text"
           placeholder="Enter token index as hex string(uint128)"
@@ -148,9 +189,10 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
           onChange={(e) => setTidx(e.target.value)}
           required
         />
-      </Form.Group>
-      <Form.Group controlId="formPid1" className="mt-3">
-        <Form.Label>Pid1</Form.Label>
+      </InputGroup>
+
+      <InputGroup className="mb-3">
+        <InputGroup.Text>Pid1</InputGroup.Text>
         <Form.Control
           type="text"
           placeholder="Enter pid1 as hex string(uint64)"
@@ -158,9 +200,10 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
           onChange={(e) => setPid1(e.target.value)}
           required
         />
-      </Form.Group>
-      <Form.Group controlId="formPid2" className="mt-3">
-        <Form.Label>Pid2</Form.Label>
+      </InputGroup>
+
+      <InputGroup className="mb-3">
+        <InputGroup.Text>Pid2</InputGroup.Text>
         <Form.Control
           type="text"
           placeholder="Enter pid2 as hex string(uint64)"
@@ -168,9 +211,10 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
           onChange={(e) => setPid2(e.target.value)}
           required
         />
-      </Form.Group>
-      <Form.Group controlId="formAmount" className="mt-3">
-        <Form.Label>Amount (Wei)</Form.Label>
+      </InputGroup>
+
+      <InputGroup className="mb-3">
+        <InputGroup.Text>Amount</InputGroup.Text>
         <Form.Control
           type="text"
           placeholder="Enter amount in Wei as hex string(uint128)"
@@ -178,7 +222,8 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
           onChange={(e) => setAmount(e.target.value)}
           required
         />
-      </Form.Group>
+      </InputGroup>
+
       <Button className="topUp" variant="primary" onClick={handleTopUp} disabled={actionEnabled}>
         TOP UP
       </Button>

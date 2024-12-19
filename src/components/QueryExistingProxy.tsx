@@ -1,3 +1,4 @@
+import React from "react";
 import { ethers } from 'ethers';
 import proxyArtifact from "zkWasm-protocol/artifacts/contracts/Proxy.sol/Proxy.json";
 import Button from 'react-bootstrap/Button';
@@ -11,33 +12,41 @@ import {
   WithDrawEvent,
   SettledEvent
  } from "../main/types";
+import { formatAddress, validateHexString } from "../main/helps";
 import { useLogger } from '../main/logger/LoggerContext';
 
-export function QueryExistingProxy({signer, handleError}: QueryExistingProxyProps) {
-  const [queryAddress, setQueryAddress] = useState('');
+export function QueryExistingProxy({signer, proxyAddress, handleError}: QueryExistingProxyProps) {
+  const [manualProxyAddress, setManualProxyAddress] = useState(""); // Proxy address now user-inputted
+  const [useManualProxyInput, setuseManualProxyInput] = useState(true); // Switch for manual/Auto Proxy Mode
   const { addLog, clearLogs } = useLogger();
 
-  const handleChange = (event: any) => {
-    setQueryAddress(event.target.value);
-  };
-
   const queryProxyInfo = async () => {
-    if (!signer || !queryAddress) {
-      handleError("Signer or query address is missing");
-      return;
-    }
-
-    clearLogs(); // Clear existing logs
-
     try {
+      if (!signer) {
+        throw new Error("Signer is missing");
+      }
+
+       // Resolve Proxy address based on mode
+       const resolvedProxyAddress = useManualProxyInput ? manualProxyAddress : proxyAddress;
+
+       if (!resolvedProxyAddress) {
+         throw new Error("Proxy address is missing");
+       }
+
+      clearLogs(); // Clear existing logs
+
+      // Validate Proxy address
+      validateHexString(resolvedProxyAddress, 40);
+      const formattedProxyAddress = formatAddress(resolvedProxyAddress);
+      const validProxyAddress = ethers.getAddress(formattedProxyAddress);
+      addLog("Valid Proxy address: " + validProxyAddress);
+
       // Get proxy info
-      const correctAddress = ethers.getAddress(queryAddress);
-      const proxyContract = new ethers.Contract(correctAddress, proxyArtifact.abi, signer);
+      const proxyContract = new ethers.Contract(validProxyAddress, proxyArtifact.abi, signer);
       const proxyInfo = await proxyContract.getProxyInfo().catch(() => {
         // proxyContract.getProxyInfo is a view function
         // if throw error, maybe the address is not belong to Proxy
-        handleError("Error querying existing Proxy: The address may not belong to a Proxy contract");
-        return;
+        throw new Error("Error querying existing Proxy: The address may not belong to a Proxy contract");
       });
 
       // Get all events
@@ -47,7 +56,7 @@ export function QueryExistingProxy({signer, handleError}: QueryExistingProxyProp
         proxyContract.filters.Settled(),
       ];
       const logs = [];
-      for (let filter of eventFilters) {
+      for (const filter of eventFilters) {
           const eventLogs = await proxyContract.queryFilter(filter);
           logs.push(...eventLogs);
       }
@@ -97,7 +106,7 @@ export function QueryExistingProxy({signer, handleError}: QueryExistingProxyProp
         
         if (parsedEvents && parsedEvents.length > 0) {
           addLog('Historical Events:');
-          parsedEvents.forEach((event, index) => {
+          parsedEvents.forEach((event) => {
             addLog(`${JSON.stringify(event)}`);
           });
         } else {
@@ -114,19 +123,34 @@ export function QueryExistingProxy({signer, handleError}: QueryExistingProxyProp
   return (
     <div>
       <h4>Query Existing Proxy</h4>
-      <InputGroup className="mb-3">
-        <Button variant="primary" onClick={queryProxyInfo}>
-          QUERY
-        </Button>
-        <Form.Control
-          placeholder="Enter Proxy address as hex string"
-          aria-label="QueryAddress"
-          aria-describedby="basic-addon1"
-          value={queryAddress}
-          onChange={handleChange}
-          className="queryAddress"
+
+       {/* Mode switch */}
+       <InputGroup className="mb-3">
+        <Form.Check
+          type="switch"
+          id="manual-auto-switch"
+          label={useManualProxyInput ? "Manual Proxy Mode" : "Auto Proxy Mode"}
+          checked={useManualProxyInput}
+          onChange={() => setuseManualProxyInput(!useManualProxyInput)}
         />
       </InputGroup>
+
+      {/* Input field for manual Proxy address */}
+      <InputGroup className="mb-3">
+        <InputGroup.Text>Proxy Address</InputGroup.Text>
+        <Form.Control
+          type="text"
+          placeholder="Enter Proxy address as hex string"
+          value={useManualProxyInput ? manualProxyAddress : proxyAddress || "No deployed Proxy address available"}
+          onChange={(e) => setManualProxyAddress(e.target.value)}
+          disabled={!useManualProxyInput}
+          required
+        />
+      </InputGroup>
+
+      <Button className="queryProxyInfo" variant="primary" onClick={queryProxyInfo}>
+        QUERY EXISTING PROXY
+      </Button>
     </div>
   )
 }

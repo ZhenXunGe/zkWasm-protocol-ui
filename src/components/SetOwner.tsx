@@ -1,3 +1,4 @@
+import React from "react";
 import { ethers } from 'ethers';
 import proxyArtifact from "zkWasm-protocol/artifacts/contracts/Proxy.sol/Proxy.json";
 import Button from 'react-bootstrap/Button';
@@ -6,36 +7,49 @@ import InputGroup from 'react-bootstrap/InputGroup';
 import { useState } from 'react';
 import { SetOwnerProps } from '../main/props';
 import { useLogger } from '../main/logger/LoggerContext';
+import { formatAddress, validateHexString } from "../main/helps";
 
 export function SetOwner({signer, proxyAddress, actionEnabled, handleError}: SetOwnerProps) {
   const [newOwner, setNewOwner] = useState('');
+  const [manualProxyAddress, setManualProxyAddress] = useState(""); // Proxy address now user-inputted
+  const [useManualProxyInput, setuseManualProxyInput] = useState(true); // Switch for manual/Auto Proxy Mode
   const { addLog, clearLogs } = useLogger();
 
   const handleSetOwner = async () => {
-    if (!signer || !proxyAddress || !newOwner) {
-      handleError("Signer, Proxy or new owner address is missing");
-      return;
-    }
-
-    clearLogs(); // Clear existing logs
-
-    // Validate new owner address
-    if (!ethers.isAddress(newOwner)) {
-      handleError("Invalid address. Please enter a valid Ethereum address.");
-      return;
-    }
-
     try {
-      const proxyContract = new ethers.Contract(proxyAddress, proxyArtifact.abi, signer);
+      if (!signer || !newOwner) {
+        throw new Error("Signer or new owner address is missing");
+      }
+
+      // Validate new owner address
+      if (!ethers.isAddress(newOwner)) {
+        throw new Error("Invalid address. Please enter a valid Ethereum address.");
+      }
+
+      // Resolve Proxy address based on mode
+      const resolvedProxyAddress = useManualProxyInput ? manualProxyAddress : proxyAddress;
+
+      if (!resolvedProxyAddress) {
+        throw new Error("Proxy address is missing");
+      }
+
+      clearLogs(); // Clear existing logs
+
+      // Validate Proxy address
+      validateHexString(resolvedProxyAddress, 40);
+      const formattedProxyAddress = formatAddress(resolvedProxyAddress);
+      const validProxyAddress = ethers.getAddress(formattedProxyAddress);
+      addLog("Valid Proxy address: " + validProxyAddress);
+
+      const proxyContract = new ethers.Contract(validProxyAddress, proxyArtifact.abi, signer);
 
       // Query current owner
       const infoBeforeSet = await proxyContract.getProxyInfo().catch(() => {
         // proxyContract.getProxyInfo is a view function
         // if throw error, maybe the address is not belong to Proxy
-        handleError("Error querying existing Proxy: The address may not belong to a Proxy contract");
-        return;
+        throw new Error("Error querying existing Proxy: The address may not belong to a Proxy contract");
       });
-      addLog("owner address before set: " + infoBeforeSet.owner);
+      addLog("Owner address before set: " + infoBeforeSet.owner);
 
       const tx = await proxyContract.setOwner(newOwner);
       addLog("Transaction sent: " + tx.hash);
@@ -44,17 +58,16 @@ export function SetOwner({signer, proxyAddress, actionEnabled, handleError}: Set
       const receipt = await tx.wait();
       addLog("Transaction confirmed: " + receipt.hash);
       addLog("Gas used: " + receipt.gasUsed.toString());
-      let statueRes = receipt.status === 1 ? "Success" : "Failure";
-      addLog("Status: " + statueRes);
+      const statusRes = receipt.status === 1 ? "Success" : "Failure";
+      addLog("Status: " + statusRes);
 
       // Query current owner
       const infoAfterSet = await proxyContract.getProxyInfo().catch(() => {
         // proxyContract.getProxyInfo is a view function
         // if throw error, maybe the address is not belong to Proxy
-        handleError("Error querying existing Proxy: The address may not belong to a Proxy contract");
-        return;
+        throw new Error("Error querying existing Proxy: The address may not belong to a Proxy contract");
       });
-      addLog("owner address after set: " + infoAfterSet.owner);
+      addLog("Owner address after set: " + infoAfterSet.owner);
 
       addLog("Owner changed successfully!");
     } catch (error) {
@@ -64,19 +77,46 @@ export function SetOwner({signer, proxyAddress, actionEnabled, handleError}: Set
 
   return (
     <div>
-      <h4>Set New Owner</h4>
+      <h4>Set Owner</h4>
+
+      {/* Mode switch */}
       <InputGroup className="mb-3">
-        <Button variant="primary" onClick={handleSetOwner} disabled={actionEnabled}>
-          SET OWNER
-        </Button>
+        <Form.Check
+          type="switch"
+          id="manual-auto-switch"
+          label={useManualProxyInput ? "Manual Proxy Mode" : "Auto Proxy Mode"}
+          checked={useManualProxyInput}
+          onChange={() => setuseManualProxyInput(!useManualProxyInput)}
+        />
+      </InputGroup>
+
+      {/* Input field for manual Proxy address */}
+      <InputGroup className="mb-3">
+        <InputGroup.Text>Proxy Address</InputGroup.Text>
         <Form.Control
           type="text"
-          placeholder="Enter new owner address as hex string"
+          placeholder="Enter Proxy address as hex string"
+          value={useManualProxyInput ? manualProxyAddress : proxyAddress || "No deployed Proxy address available"}
+          onChange={(e) => setManualProxyAddress(e.target.value)}
+          disabled={!useManualProxyInput}
+          required
+        />
+      </InputGroup>
+
+      <InputGroup className="mb-3">
+        <InputGroup.Text>Owner Address</InputGroup.Text>
+        <Form.Control
+          type="text"
+          placeholder="Enter owner address as hex string"
           value={newOwner}
           onChange={(e) => setNewOwner(e.target.value)}
           required
         />
       </InputGroup>
+
+      <Button className="setOwner" variant="primary" onClick={handleSetOwner} disabled={actionEnabled}>
+        SET OWNER
+      </Button>
     </div>
   )
 }
