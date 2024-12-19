@@ -1,3 +1,4 @@
+import React from "react";
 import { ethers } from 'ethers';
 import proxyArtifact from "zkWasm-protocol/artifacts/contracts/Proxy.sol/Proxy.json";
 import Button from 'react-bootstrap/Button';
@@ -60,8 +61,8 @@ export function AddTX({signer, proxyAddress, withdrawAddress, addTXEnabled, setA
       const receipt = await tx.wait();
       addLog("Transaction confirmed: " + receipt.hash);
       addLog("Gas used: " + receipt.gasUsed.toString());
-      let statueRes = receipt.status === 1 ? "Success" : "Failure";
-      addLog("Status: " + statueRes);
+      const statusRes = receipt.status === 1 ? "Success" : "Failure";
+      addLog("Status: " + statusRes);
 
       // Qeury transaction address
       const address = await proxyContract._get_transaction(0n); //opcode of withdraw is 0x0

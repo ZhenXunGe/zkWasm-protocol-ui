@@ -1,3 +1,4 @@
+import React from "react";
 import { ethers } from 'ethers';
 import proxyArtifact from "zkWasm-protocol/artifacts/contracts/Proxy.sol/Proxy.json";
 import Button from 'react-bootstrap/Button';
@@ -52,8 +53,8 @@ export function SetSettler({signer, proxyAddress, actionEnabled, handleError}: S
       const receipt = await tx.wait();
       addLog("Transaction confirmed: " + receipt.hash);
       addLog("Gas used: " + receipt.gasUsed.toString());
-      let statueRes = receipt.status === 1 ? "Success" : "Failure";
-      addLog("Status: " + statueRes);
+      const statusRes = receipt.status === 1 ? "Success" : "Failure";
+      addLog("Status: " + statusRes);
 
       addLog("Settler changed successfully!");
     } catch (error) {

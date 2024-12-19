@@ -1,3 +1,4 @@
+import React from "react";
 import { useMemo, useState } from 'react';
 import { ethers } from 'ethers';
 import Button from 'react-bootstrap/Button';
@@ -45,7 +46,7 @@ export const DeployContract = ({
     }
   }, []);
 
-  async function deployContract(name: string, artifact: any, params: any[], dispatchAction: (address: string) => Action) {
+  async function deployContract(name: string, artifact: any, params: bigint[], dispatchAction: (address: string) => Action) {
     // Get abi and bytecode
     const abi = artifact.abi;
     const bytecode = artifact.bytecode;
@@ -75,7 +76,7 @@ export const DeployContract = ({
       { name: "Verifier", artifact: dummyVerifierArtifact, params: [], dispatchAction: setDummyVerifierAddress}
     ];
   
-    let results: { name: string; status: string }[] = [];
+    const results: { name: string; status: string }[] = [];
 
     for (const contract of contracts) {
       if (alreadyDeployed.has(contract.name)) {
@@ -153,7 +154,7 @@ export const DeployContract = ({
         <p><strong>User Guide:</strong></p>
         <ul>
           <li>This button deploys the contract to the blockchain. It should be clicked first to initialize the contract.</li>
-          <li>Click the "Deploy All" button to start deploying all contracts sequentially.</li>
+          <li>Click the &quot;Deploy All&quot; button to start deploying all contracts sequentially.</li>
           <li>The deployment sequence includes:
             <ul>
               <li>1. Deploy Proxy contract</li>
@@ -193,7 +194,7 @@ export const DeployContract = ({
           <li>If a contract fails, deployment of subsequent contracts will stop to avoid dependency issues.</li>
           <li>Switch to the appropriate network (e.g., Mainnet, Testnet) as required before deployment.</li>
           <li>If you encounter gas-related issues, ensure your wallet has sufficient funds.</li>
-          <li>For transactions stuck in "pending", consider manually canceling them via your wallet.</li>
+          <li>For transactions stuck in &quot;pending&quot;, consider manually canceling them via your wallet.</li>
         </ul>
       </Alert>
       <LogViewer />

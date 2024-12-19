@@ -1,3 +1,4 @@
+import React from "react";
 import { ethers } from 'ethers';
 import proxyArtifact from "zkWasm-protocol/artifacts/contracts/Proxy.sol/Proxy.json";
 import Button from 'react-bootstrap/Button';
@@ -17,7 +18,7 @@ export function QueryExistingProxy({signer, handleError}: QueryExistingProxyProp
   const [queryAddress, setQueryAddress] = useState('');
   const { addLog, clearLogs } = useLogger();
 
-  const handleChange = (event: any) => {
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setQueryAddress(event.target.value);
   };
 
@@ -47,7 +48,7 @@ export function QueryExistingProxy({signer, handleError}: QueryExistingProxyProp
         proxyContract.filters.Settled(),
       ];
       const logs = [];
-      for (let filter of eventFilters) {
+      for (const filter of eventFilters) {
           const eventLogs = await proxyContract.queryFilter(filter);
           logs.push(...eventLogs);
       }
@@ -97,7 +98,7 @@ export function QueryExistingProxy({signer, handleError}: QueryExistingProxyProp
         
         if (parsedEvents && parsedEvents.length > 0) {
           addLog('Historical Events:');
-          parsedEvents.forEach((event, index) => {
+          parsedEvents.forEach((event) => {
             addLog(`${JSON.stringify(event)}`);
           });
         } else {

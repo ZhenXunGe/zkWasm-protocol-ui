@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from "react";
 import { Form, Button } from "react-bootstrap";
 import { ethers } from "ethers";
@@ -93,14 +94,14 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
       console.log(balanceBeforeTopup)
       addLog("The balance of the Proxy contract before topup is: " + balanceBeforeTopup);
 
-      var tx = await tokenContract.approve(proxyAddress, amountWei);
+      const tx = await tokenContract.approve(proxyAddress, amountWei);
       addLog("Approve Transaction sent: " + tx.hash);
 
       // Wait the transaction confirmed
       const approveReceipt = await tx.wait();
       addLog("Approve Transaction confirmed: " + approveReceipt.hash);
       addLog("Approve Gas used: " + approveReceipt.gasUsed.toString());
-      let approveRes = approveReceipt.status === 1 ? "Success" : "Failure";
+      const approveRes = approveReceipt.status === 1 ? "Success" : "Failure";
       addLog("Approve Status: " + approveRes);
 
       const result = await proxyContract.topup(
@@ -115,7 +116,7 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
       const receipt = await result.wait();
       addLog("Topup Transaction confirmed: " + receipt.hash);
       addLog("Topup Gas used: " + receipt.gasUsed.toString());
-      let topupRes = receipt.status === 1 ? "Success" : "Failure";
+      const topupRes = receipt.status === 1 ? "Success" : "Failure";
       addLog("Topup Status: " + topupRes);
 
       // Query Events

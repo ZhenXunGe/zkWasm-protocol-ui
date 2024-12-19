@@ -1,3 +1,4 @@
+import React from "react";
 import { ethers } from 'ethers';
 import proxyArtifact from "zkWasm-protocol/artifacts/contracts/Proxy.sol/Proxy.json";
 import Button from 'react-bootstrap/Button';
@@ -54,7 +55,7 @@ export function ModifyToken({signer, proxyAddress, actionEnabled, handleError}: 
       const proxyContract = new ethers.Contract(validProxyAddress, proxyArtifact.abi, signer);
 
       // Ensure the token address is a valid Ethereum address
-      let formattedAddress = formatAddress(tokenAddress);
+      const formattedAddress = formatAddress(tokenAddress);
       const validTokenAddress = ethers.getAddress(formattedAddress);
       addLog("Valid Address: " + validTokenAddress)
 
@@ -75,8 +76,8 @@ export function ModifyToken({signer, proxyAddress, actionEnabled, handleError}: 
       const receipt = await tx.wait();
       addLog("Transaction confirmed: " + receipt.hash);
       addLog("Gas used: " + receipt.gasUsed.toString());
-      let statueRes = receipt.status === 1 ? "Success" : "Failure";
-      addLog("Status: " + statueRes);
+      const statusRes = receipt.status === 1 ? "Success" : "Failure";
+      addLog("Status: " + statusRes);
 
       // Qeury all tokens
       queryAllTokens(proxyContract, addLog);

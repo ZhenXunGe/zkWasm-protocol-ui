@@ -1,3 +1,4 @@
+import React from "react";
 import { ethers } from 'ethers';
 import proxyArtifact from "zkWasm-protocol/artifacts/contracts/Proxy.sol/Proxy.json";
 import Button from 'react-bootstrap/Button';

@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState } from 'react';
 // Logger Context
 const LoggerContext = createContext({
   logs: [] as string[],
-  addLog: (message: string) => {},
+  addLog: (message: string) => { console.log(message) },
   clearLogs: () => {},
 });
 

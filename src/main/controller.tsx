@@ -1,6 +1,7 @@
+import React from "react";
 import { ethers, Eip1193Provider, BrowserProvider } from 'ethers';
 import { useState } from 'react';
-import { Alert, Button, Row, Col, Card } from 'react-bootstrap';
+import { Alert, Button, Card } from 'react-bootstrap';
 import { useAppSelector } from "../app/hooks";
 import { selectProxyAddress, selectWithdrawAddress, selectDummyVerifierAddress } from '../data/contractSlice';
 import {
@@ -155,7 +156,7 @@ export function GameController() {
                 <strong>Auto Mode:</strong> In auto mode, after deploying the contract, the contract address is automatically obtained and used for interaction.
               </Alert>
               {components.map(({ Component, props }, index) => (
-                <div className="steps">
+                <div className="steps" key={index}>
                   <Component {...props} />
                   <LogViewer />
                 </div>
