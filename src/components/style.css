@@ -21,6 +21,9 @@ button {
 .queryAllTokens.btn,
 .modifyToken.btn,
 .topUp.btn,
+.addToken.btn,
+.addTX.btn,
+.setVerifier.btn,
 .setVerifierImgCom.btn {
   margin-bottom: 20px;
 }
@@ -38,7 +41,7 @@ button {
 }
 
 .logs {
-  width: 90vw;
+  width: 100%;
   height: 200px;
   border: 1px solid black;
   overflow: auto;
@@ -56,4 +59,8 @@ button {
 
 .container {
   margin-bottom: 20px;
+}
+
+div.card {
+  padding: 0;
 }

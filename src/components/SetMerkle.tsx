@@ -5,16 +5,26 @@ import Form from 'react-bootstrap/Form';
 import InputGroup from 'react-bootstrap/InputGroup';
 import { useState } from 'react';
 import { SetMerkleProps } from '../main/props';
-import { removeHexPrefix, validateHexString } from "../main/helps";
+import {  formatAddress, removeHexPrefix, validateHexString } from "../main/helps";
 import { useLogger } from '../main/logger/LoggerContext';
 
 export function SetMerkle({signer, proxyAddress, actionEnabled, handleError}: SetMerkleProps) {
   const [newRoot, setNewRoot] = useState('');
+  const [manualProxyAddress, setManualProxyAddress] = useState(""); // Proxy address now user-inputted
+  const [useManualInput, setUseManualInput] = useState(true); // Switch for manual/auto mode
   const { addLog, clearLogs } = useLogger();
 
   const handleSetMerkle = async () => {
-    if (!signer || !proxyAddress || !newRoot) {
-      handleError("Signer, Proxy address or new root is missing");
+    if (!signer || !newRoot) {
+      handleError("Signer or new root is missing");
+      return;
+    }
+
+    // Resolve Proxy address based on mode
+    const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
+
+    if (!resolvedProxyAddress) {
+      handleError("Proxy address is missing");
       return;
     }
 
@@ -23,7 +33,13 @@ export function SetMerkle({signer, proxyAddress, actionEnabled, handleError}: Se
     try {
       validateHexString(newRoot);
 
-      const proxyContract = new ethers.Contract(proxyAddress, proxyArtifact.abi, signer);
+      // Validate Proxy address
+      validateHexString(resolvedProxyAddress, 40);
+      const formattedProxyAddress = formatAddress(resolvedProxyAddress);
+      const validProxyAddress = ethers.getAddress(formattedProxyAddress);
+      addLog("Valid proxy Address: " + validProxyAddress);
+
+      const proxyContract = new ethers.Contract(validProxyAddress, proxyArtifact.abi, signer);
 
       const merkleBeforeSet = await proxyContract.merkle_root()
       addLog("merkle root before set merkle: " + merkleBeforeSet);
@@ -62,6 +78,31 @@ export function SetMerkle({signer, proxyAddress, actionEnabled, handleError}: Se
   return (
     <div>
       <h4>Set Merkle</h4>
+
+      {/* Mode switch */}
+      <InputGroup className="mb-3">
+        <Form.Check
+          type="switch"
+          id="manual-auto-switch"
+          label={useManualInput ? "Manual Mode" : "Auto Mode"}
+          checked={useManualInput}
+          onChange={() => setUseManualInput(!useManualInput)}
+        />
+      </InputGroup>
+
+      {/* Input field for manual Proxy address */}
+      {useManualInput && (
+        <InputGroup className="mb-3">
+          <Form.Control
+            type="text"
+            placeholder="Enter Proxy address as hex string"
+            value={manualProxyAddress}
+            onChange={(e) => setManualProxyAddress(e.target.value)}
+            required
+          />
+        </InputGroup>
+      )}
+
       <InputGroup className="mb-3">
         <Button className="setMerkle" variant="primary" onClick={handleSetMerkle} disabled={actionEnabled}>
           SET MERKLE

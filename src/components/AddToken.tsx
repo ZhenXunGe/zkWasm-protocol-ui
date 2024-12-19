@@ -8,64 +8,101 @@ import { AddTokenProps } from '../main/props';
 import { formatAddress, validateHexString, queryAllTokens } from "../main/helps";
 import { useLogger } from '../main/logger/LoggerContext';
 
-export function AddToken({signer, proxyAddress, actionEnabled, handleError}: AddTokenProps) {
+export function AddToken({ signer, proxyAddress, actionEnabled, handleError }: AddTokenProps) {
   const [tokenAddress, setTokenAddress] = useState("");
+  const [manualProxyAddress, setManualProxyAddress] = useState(""); // Proxy address now user-inputted
+  const [useManualInput, setUseManualInput] = useState(true); // Switch for manual/auto mode
   const { addLog, clearLogs } = useLogger();
 
   const handleAddToken = async () => {
-    if (!signer || !proxyAddress || !tokenAddress) {
-      handleError("Signer, Proxy address or tokenAddress is missing");
+    if (!signer || !tokenAddress) {
+      handleError("Signer or tokenAddress is missing");
+      return;
+    }
+
+    // Resolve Proxy address based on mode
+    const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
+
+    if (!resolvedProxyAddress) {
+      handleError("Proxy address is missing");
       return;
     }
 
     clearLogs(); // Clear existing logs
 
     try {
-      const proxyContract = new ethers.Contract(proxyAddress, proxyArtifact.abi, signer);
+       // Validate Proxy address
+       validateHexString(resolvedProxyAddress, 40);
+       const formattedProxyAddress = formatAddress(resolvedProxyAddress);
+       const validProxyAddress = ethers.getAddress(formattedProxyAddress);
+       addLog("Valid proxyAddress: " + validProxyAddress);
 
-      // Check token format
+      const proxyContract = new ethers.Contract(validProxyAddress, proxyArtifact.abi, signer);
+
+      // Validate token address
       validateHexString(tokenAddress, 40);
-
-      // Ensure the token address is a valid Ethereum address
-      let formattedAddress = formatAddress(tokenAddress);
+      const formattedAddress = formatAddress(tokenAddress);
       const validTokenAddress = ethers.getAddress(formattedAddress);
-      addLog("Valid tokenAddress: " + validTokenAddress)
+      addLog("Valid tokenAddress: " + validTokenAddress);
 
       // Call the _l1_address function with the valid token address
-      const l1token = await proxyContract._l1_address(validTokenAddress)
+      const l1token = await proxyContract._l1_address(validTokenAddress);
       addLog("tokenaddr: " + tokenAddress + ", l1tokenaddr(encoded): " + l1token);
 
-      const isLocal = await proxyContract._is_local(l1token)
-      if(!isLocal) {
-        throw new Error("token is not a local erc token");
+      const isLocal = await proxyContract._is_local(l1token);
+      if (!isLocal) {
+        throw new Error("Token is not a local ERC token");
       }
 
       const tx = await proxyContract.addToken(l1token);
       addLog("Transaction sent: " + tx.hash);
 
-      // Wait the transaction confirmed
+      // Wait for transaction confirmation
       const receipt = await tx.wait();
       addLog("Transaction confirmed: " + receipt.hash);
       addLog("Gas used: " + receipt.gasUsed.toString());
-      let statueRes = receipt.status === 1 ? "Success" : "Failure";
-      addLog("Status: " + statueRes);
+      const statusRes = receipt.status === 1 ? "Success" : "Failure";
+      addLog("Status: " + statusRes);
 
-      // Qeury all tokens
+      // Query all tokens
       queryAllTokens(proxyContract, addLog);
 
       addLog("Token added successfully!");
     } catch (error) {
-      handleError("Error adding token:" + error);
+      handleError("Error adding token: " + error);
     }
-  }
+  };
 
   return (
     <div>
       <h4>Add Token</h4>
+
+      {/* Mode switch */}
       <InputGroup className="mb-3">
-        <Button className="addToken" variant="primary" onClick={handleAddToken} disabled={actionEnabled}>
-          ADD TOKEN
-        </Button>
+        <Form.Check
+          type="switch"
+          id="manual-auto-switch"
+          label={useManualInput ? "Manual Mode" : "Auto Mode"}
+          checked={useManualInput}
+          onChange={() => setUseManualInput(!useManualInput)}
+        />
+      </InputGroup>
+
+      {/* Input field for manual Proxy address */}
+      {useManualInput && (
+        <InputGroup className="mb-3">
+          <Form.Control
+            type="text"
+            placeholder="Enter Proxy address as hex string"
+            value={manualProxyAddress}
+            onChange={(e) => setManualProxyAddress(e.target.value)}
+            required
+          />
+        </InputGroup>
+      )}
+
+      {/* Input field for token address */}
+      <InputGroup className="mb-3">
         <Form.Control
           type="text"
           placeholder="Enter tokenAddress as hex string(uint256)"
@@ -74,6 +111,11 @@ export function AddToken({signer, proxyAddress, actionEnabled, handleError}: Add
           required
         />
       </InputGroup>
+
+      {/* Add Token Button */}
+      <Button className="addToken" variant="primary" onClick={handleAddToken} disabled={actionEnabled}>
+        ADD TOKEN
+      </Button>
     </div>
-  )
+  );
 }

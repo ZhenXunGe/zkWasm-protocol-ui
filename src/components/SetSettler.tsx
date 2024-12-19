@@ -6,14 +6,17 @@ import InputGroup from 'react-bootstrap/InputGroup';
 import { useState } from 'react';
 import { SetSettlerProps } from '../main/props';
 import { useLogger } from '../main/logger/LoggerContext';
+import { formatAddress, validateHexString } from "../main/helps";
 
 export function SetSettler({signer, proxyAddress, actionEnabled, handleError}: SetSettlerProps) {
   const [newSettler, setNewSettler] = useState('');
+  const [manualProxyAddress, setManualProxyAddress] = useState(""); // Proxy address now user-inputted
+  const [useManualInput, setUseManualInput] = useState(true); // Switch for manual/auto mode
   const { addLog, clearLogs } = useLogger();
 
   const handleSetSettler = async () => {
-    if (!signer || !proxyAddress || !newSettler) {
-      handleError("Signer, Proxy or settler address is missing");
+    if (!signer || !newSettler) {
+      handleError("Signer or settler address is missing");
       return;
     }
 
@@ -23,10 +26,24 @@ export function SetSettler({signer, proxyAddress, actionEnabled, handleError}: S
       return;
     }
 
+    // Resolve Proxy address based on mode
+    const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
+
+    if (!resolvedProxyAddress) {
+      handleError("Proxy address is missing");
+      return;
+    }
+
     clearLogs(); // Clear existing logs
 
     try {
-      const proxyContract = new ethers.Contract(proxyAddress, proxyArtifact.abi, signer);
+      // Validate Proxy address
+      validateHexString(resolvedProxyAddress, 40);
+      const formattedProxyAddress = formatAddress(resolvedProxyAddress);
+      const validProxyAddress = ethers.getAddress(formattedProxyAddress);
+      addLog("Valid proxy Address: " + validProxyAddress);
+
+      const proxyContract = new ethers.Contract(validProxyAddress, proxyArtifact.abi, signer);
 
       const tx = await proxyContract.setSettler(newSettler);
       addLog("Transaction sent: " + tx.hash);
@@ -47,6 +64,31 @@ export function SetSettler({signer, proxyAddress, actionEnabled, handleError}: S
   return (
     <div>
       <h4>Set New Settler</h4>
+
+      {/* Mode switch */}
+      <InputGroup className="mb-3">
+        <Form.Check
+          type="switch"
+          id="manual-auto-switch"
+          label={useManualInput ? "Manual Mode" : "Auto Mode"}
+          checked={useManualInput}
+          onChange={() => setUseManualInput(!useManualInput)}
+        />
+      </InputGroup>
+
+      {/* Input field for manual Proxy address */}
+      {useManualInput && (
+        <InputGroup className="mb-3">
+          <Form.Control
+            type="text"
+            placeholder="Enter Proxy address as hex string"
+            value={manualProxyAddress}
+            onChange={(e) => setManualProxyAddress(e.target.value)}
+            required
+          />
+        </InputGroup>
+      )}
+
       <InputGroup className="mb-3">
         <Button variant="primary" onClick={handleSetSettler} disabled={actionEnabled}>
           SET Settler

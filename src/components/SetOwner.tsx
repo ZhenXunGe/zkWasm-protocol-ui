@@ -6,18 +6,19 @@ import InputGroup from 'react-bootstrap/InputGroup';
 import { useState } from 'react';
 import { SetOwnerProps } from '../main/props';
 import { useLogger } from '../main/logger/LoggerContext';
+import { formatAddress, validateHexString } from "../main/helps";
 
 export function SetOwner({signer, proxyAddress, actionEnabled, handleError}: SetOwnerProps) {
   const [newOwner, setNewOwner] = useState('');
+  const [manualProxyAddress, setManualProxyAddress] = useState(""); // Proxy address now user-inputted
+  const [useManualInput, setUseManualInput] = useState(true); // Switch for manual/auto mode
   const { addLog, clearLogs } = useLogger();
 
   const handleSetOwner = async () => {
-    if (!signer || !proxyAddress || !newOwner) {
-      handleError("Signer, Proxy or new owner address is missing");
+    if (!signer || !newOwner) {
+      handleError("Signer or new owner address is missing");
       return;
     }
-
-    clearLogs(); // Clear existing logs
 
     // Validate new owner address
     if (!ethers.isAddress(newOwner)) {
@@ -25,8 +26,24 @@ export function SetOwner({signer, proxyAddress, actionEnabled, handleError}: Set
       return;
     }
 
+    // Resolve Proxy address based on mode
+    const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
+
+    if (!resolvedProxyAddress) {
+      handleError("Proxy address is missing");
+      return;
+    }
+
+    clearLogs(); // Clear existing logs
+
     try {
-      const proxyContract = new ethers.Contract(proxyAddress, proxyArtifact.abi, signer);
+      // Validate Proxy address
+      validateHexString(resolvedProxyAddress, 40);
+      const formattedProxyAddress = formatAddress(resolvedProxyAddress);
+      const validProxyAddress = ethers.getAddress(formattedProxyAddress);
+      addLog("Valid proxy Address: " + validProxyAddress);
+
+      const proxyContract = new ethers.Contract(validProxyAddress, proxyArtifact.abi, signer);
 
       // Query current owner
       const infoBeforeSet = await proxyContract.getProxyInfo().catch(() => {
@@ -65,6 +82,31 @@ export function SetOwner({signer, proxyAddress, actionEnabled, handleError}: Set
   return (
     <div>
       <h4>Set New Owner</h4>
+
+      {/* Mode switch */}
+      <InputGroup className="mb-3">
+        <Form.Check
+          type="switch"
+          id="manual-auto-switch"
+          label={useManualInput ? "Manual Mode" : "Auto Mode"}
+          checked={useManualInput}
+          onChange={() => setUseManualInput(!useManualInput)}
+        />
+      </InputGroup>
+
+      {/* Input field for manual Proxy address */}
+      {useManualInput && (
+        <InputGroup className="mb-3">
+          <Form.Control
+            type="text"
+            placeholder="Enter Proxy address as hex string"
+            value={manualProxyAddress}
+            onChange={(e) => setManualProxyAddress(e.target.value)}
+            required
+          />
+        </InputGroup>
+      )}
+
       <InputGroup className="mb-3">
         <Button variant="primary" onClick={handleSetOwner} disabled={actionEnabled}>
           SET OWNER

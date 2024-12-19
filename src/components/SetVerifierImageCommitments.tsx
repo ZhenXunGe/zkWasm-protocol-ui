@@ -1,20 +1,32 @@
 import { ethers } from 'ethers';
 import proxyArtifact from "zkWasm-protocol/artifacts/contracts/Proxy.sol/Proxy.json";
 import Button from 'react-bootstrap/Button';
+import Form from 'react-bootstrap/Form';
+import InputGroup from 'react-bootstrap/InputGroup';
 import { useState } from 'react';
 import { SetVerifierImageCommitmentsProps } from '../main/props';
-import { removeHexPrefix, validateHexString } from "../main/helps";
+import { formatAddress, removeHexPrefix, validateHexString } from "../main/helps";
 import { useLogger } from '../main/logger/LoggerContext';
 
 export function SetVerifierImageCommitments({signer, proxyAddress, actionEnabled, handleError}: SetVerifierImageCommitmentsProps) {
   const [commitment1, setCommitment1] = useState('');
   const [commitment2, setCommitment2] = useState('');
   const [commitment3, setCommitment3] = useState('');
+  const [manualProxyAddress, setManualProxyAddress] = useState(""); // Proxy address now user-inputted
+  const [useManualInput, setUseManualInput] = useState(true); // Switch for manual/auto mode
   const { addLog, clearLogs } = useLogger();
 
   const handleSetCommitments = async () => {
-    if (!signer || !proxyAddress || !commitment1 || !commitment2 || !commitment3) {
-      handleError("Signer, Proxy address or commitment is missing");
+    if (!signer || !commitment1 || !commitment2 || !commitment3) {
+      handleError("Signer or commitment is missing");
+      return;
+    }
+
+    // Resolve Proxy address based on mode
+    const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
+
+    if (!resolvedProxyAddress) {
+      handleError("Proxy address is missing");
       return;
     }
 
@@ -25,7 +37,13 @@ export function SetVerifierImageCommitments({signer, proxyAddress, actionEnabled
       validateHexString(commitment2);
       validateHexString(commitment3);
 
-      const proxyContract = new ethers.Contract(proxyAddress, proxyArtifact.abi, signer);
+      // Validate Proxy address
+      validateHexString(resolvedProxyAddress, 40);
+      const formattedProxyAddress = formatAddress(resolvedProxyAddress);
+      const validProxyAddress = ethers.getAddress(formattedProxyAddress);
+      addLog("Valid proxy Address: " + validProxyAddress);
+
+      const proxyContract = new ethers.Contract(validProxyAddress, proxyArtifact.abi, signer);
 
       const commitments = [
         BigInt("0x" + removeHexPrefix(commitment1)),
@@ -57,6 +75,31 @@ export function SetVerifierImageCommitments({signer, proxyAddress, actionEnabled
   return (
     <div>
       <h4>Set Verifier Image Commitments</h4>
+
+      {/* Mode switch */}
+      <InputGroup className="mb-3">
+        <Form.Check
+          type="switch"
+          id="manual-auto-switch"
+          label={useManualInput ? "Manual Mode" : "Auto Mode"}
+          checked={useManualInput}
+          onChange={() => setUseManualInput(!useManualInput)}
+        />
+      </InputGroup>
+
+      {/* Input field for manual Proxy address */}
+      {useManualInput && (
+        <InputGroup className="mb-3">
+          <Form.Control
+            type="text"
+            placeholder="Enter Proxy address as hex string"
+            value={manualProxyAddress}
+            onChange={(e) => setManualProxyAddress(e.target.value)}
+            required
+          />
+        </InputGroup>
+      )}
+
       <div className="setCommitments">
         <label htmlFor="commitment1">Commitment 1</label>
         <input

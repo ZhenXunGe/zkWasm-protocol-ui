@@ -3,8 +3,9 @@ import { Form, Button } from "react-bootstrap";
 import { ethers } from "ethers";
 import proxyArtifact from "zkWasm-protocol/artifacts/contracts/Proxy.sol/Proxy.json";
 import { TopUpProps } from '../main/props';
-import { removeHexPrefix, validateHexString } from "../main/helps";
+import { formatAddress, removeHexPrefix, validateHexString } from "../main/helps";
 import { useLogger } from '../main/logger/LoggerContext';
+import InputGroup from 'react-bootstrap/InputGroup';
 
 // The token we use is ERC20 token
 const erc20ABI = [
@@ -35,18 +36,34 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
   const [pid1, setPid1] = useState("");
   const [pid2, setPid2] = useState("");
   const [amount, setAmount] = useState("");
+  const [manualProxyAddress, setManualProxyAddress] = useState(""); // Proxy address now user-inputted
+  const [useManualInput, setUseManualInput] = useState(true); // Switch for manual/auto mode
   const { addLog, clearLogs } = useLogger();
 
   const handleTopUp = async () => {
-    if (!signer || !proxyAddress || !tidx || !amount || !pid1 || !pid2) {
-      handleError("Signer, Proxy address, tidx, amount, pid1 or pid2 is missing");
+    if (!signer || !tidx || !amount || !pid1 || !pid2) {
+      handleError("Signer, tidx, amount, pid1 or pid2 is missing");
+      return;
+    }
+
+    // Resolve Proxy address based on mode
+    const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
+
+    if (!resolvedProxyAddress) {
+      handleError("Proxy address is missing");
       return;
     }
 
     clearLogs(); // Clear existing logs
 
     try {
-      const proxyContract = new ethers.Contract(proxyAddress, proxyArtifact.abi, signer);
+      // Validate Proxy address
+      validateHexString(resolvedProxyAddress, 40);
+      const formattedProxyAddress = formatAddress(resolvedProxyAddress);
+      const validProxyAddress = ethers.getAddress(formattedProxyAddress);
+      addLog("Valid proxy Address: " + validProxyAddress);
+
+      const proxyContract = new ethers.Contract(validProxyAddress, proxyArtifact.abi, signer);
 
       // Make sue tidx and amount is in the scope of uint128
       validateHexString(tidx, 32);
@@ -139,6 +156,30 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
   return (
     <div>
       <h4>Topup Your Ethereum Wallet</h4>
+{/* Mode switch */}
+      <InputGroup className="mb-3">
+        <Form.Check
+          type="switch"
+          id="manual-auto-switch"
+          label={useManualInput ? "Manual Mode" : "Auto Mode"}
+          checked={useManualInput}
+          onChange={() => setUseManualInput(!useManualInput)}
+        />
+      </InputGroup>
+
+      {/* Input field for manual Proxy address */}
+      {useManualInput && (
+        <InputGroup className="mb-3">
+          <Form.Control
+            type="text"
+            placeholder="Enter Proxy address as hex string"
+            value={manualProxyAddress}
+            onChange={(e) => setManualProxyAddress(e.target.value)}
+            required
+          />
+        </InputGroup>
+      )}
+
       <Form.Group controlId="formTidx">
         <Form.Label>Token Index</Form.Label>
         <Form.Control

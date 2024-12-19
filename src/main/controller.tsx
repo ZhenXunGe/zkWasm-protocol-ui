@@ -1,12 +1,12 @@
-import Button from 'react-bootstrap/Button';
 import { ethers, Eip1193Provider, BrowserProvider } from 'ethers';
 import { useState } from 'react';
+import { Alert, Button, Row, Col, Card } from 'react-bootstrap';
 import { useAppSelector } from "../app/hooks";
-import { selectProxyAddress } from '../data/contractSlice';
+import { selectProxyAddress, selectWithdrawAddress, selectDummyVerifierAddress } from '../data/contractSlice';
 import {
   AddTXProps,
   AddTokenProps,
-  DeployProxyProps,
+  DeployContractProps,
   ErrorModalProps,
   ModifyTokenProps,
   QueryAllTokensProps,
@@ -33,7 +33,7 @@ import { QueryExistingProxy } from '../components/QueryExistingProxy';
 import { SetVerifier } from '../components/SetVerifier';
 import { AddTX } from '../components/AddTX';
 import { ModifyToken } from '../components/ModifyToken';
-import { DeployProxy } from '../components/DeployProxy';
+import { DeployContract } from '../components/DeployContract';
 import { LoggerProvider } from './logger/LoggerContext';
 import { LogViewer } from './logger/LogViewer';
 import "../components/style.css";
@@ -50,7 +50,7 @@ type ComponentWithProps = {
   props:
   AddTXProps
   | AddTokenProps
-  | DeployProxyProps
+  | DeployContractProps
   | ErrorModalProps
   | ModifyTokenProps
   | QueryAllTokensProps
@@ -74,6 +74,8 @@ export function GameController() {
   const [modalMessage, setModalMessage] = useState("");
 
   const proxyAddress = useAppSelector(selectProxyAddress);
+  const withdrawAddress = useAppSelector(selectWithdrawAddress);
+  const verifierAddress = useAppSelector(selectDummyVerifierAddress);
 
   const handleConnectWallet = async () => {
     if (window.ethereum) {
@@ -101,9 +103,8 @@ export function GameController() {
   }
 
   const components: ComponentWithProps[] = [
-    { Component: DeployProxy, props: { signer, proxyAddress, actionEnabled, setActionEnabled, setAddTXEnabled, handleError } },
-    { Component: AddTX, props: { signer, proxyAddress, addTXEnabled, setAddTXEnabled, handleError } },
-    { Component: SetVerifier, props: { signer, proxyAddress, actionEnabled, handleError } },
+    { Component: AddTX, props: { signer, proxyAddress, withdrawAddress, addTXEnabled, setAddTXEnabled, handleError } },
+    { Component: SetVerifier, props: { signer, proxyAddress, verifierAddress, actionEnabled, handleError } },
     { Component: SetVerifierImageCommitments, props: { signer, proxyAddress, actionEnabled, handleError } },
     { Component: AddToken, props: { signer, proxyAddress, actionEnabled, handleError } },
     { Component: ModifyToken, props: { signer, proxyAddress, actionEnabled, handleError } },
@@ -123,17 +124,45 @@ export function GameController() {
           CONNECT WALLET
         </Button>
       ) : (
-        <>
+        <LoggerProvider>
           <p>Connected Wallet: {accountAddress}</p> {/* Display the connected account address */}
-          {components.map(({ Component, props }, index) => (
-            <LoggerProvider key={index}>
+          <Card border="dark" className="mb-3">
+            <Card.Header as="h5">Deploy Contract</Card.Header>
+            <Card.Body>
+              <Alert variant="info">
+                <strong>Deploy Contract:</strong> This button deploys the contract to the blockchain.
+                It should be clicked first to initialize the contract.
+              </Alert>
               <div className="steps">
-                <Component {...props} />
-                <LogViewer />
+                <DeployContract
+                  signer={signer}
+                  proxyAddress={proxyAddress}
+                  setActionEnabled={setActionEnabled}
+                  setAddTXEnabled={setAddTXEnabled}
+                  handleError={handleError}
+                / >
               </div>
-            </LoggerProvider>
-          ))}
-        </>
+            </Card.Body>
+          </Card>
+          <Card border="dark" className="mb-3">
+            <Card.Header as="h5">Contract Operations</Card.Header>
+            <Card.Body>
+              <Alert variant="info">
+                <strong>Operation Buttons:</strong> These buttons are used for interacting with the deployed contract.
+                After deploying the contract, use these buttons to manage or query the contract.
+                <br />
+                <strong>Manual Mode:</strong> In manual mode, the user must enter the contract address to interact with the contract.<br />
+                <strong>Auto Mode:</strong> In auto mode, after deploying the contract, the contract address is automatically obtained and used for interaction.
+              </Alert>
+              {components.map(({ Component, props }, index) => (
+                <div className="steps">
+                  <Component {...props} />
+                  <LogViewer />
+                </div>
+              ))}
+            </Card.Body>
+          </Card>
+        </LoggerProvider>
       )}
       <ErrorModal
         show={showErrorModal}

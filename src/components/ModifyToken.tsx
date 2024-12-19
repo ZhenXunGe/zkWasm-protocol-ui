@@ -15,12 +15,22 @@ const validateIndex = (index: number) => {
 
 export function ModifyToken({signer, proxyAddress, actionEnabled, handleError}: ModifyTokenProps) {
   const [index, setIndex] = useState(0);
+  const [manualProxyAddress, setManualProxyAddress] = useState(""); // Proxy address now user-inputted
+  const [useManualInput, setUseManualInput] = useState(true); // Switch for manual/auto mode
   const [tokenAddress, setTokenAddress] = useState('');
   const { addLog, clearLogs } = useLogger();
 
   const handleModifyToken = async () => {
-    if (!signer || !proxyAddress || !tokenAddress) {
-      handleError("Signer, Proxy address, token index or tokenUid is missing");
+    if (!signer || !index ||!tokenAddress) {
+      handleError("Signer, token index or token address is missing");
+      return;
+    }
+
+    // Resolve Proxy address based on mode
+    const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
+
+    if (!resolvedProxyAddress) {
+      handleError("Proxy address is missing");
       return;
     }
 
@@ -35,7 +45,13 @@ export function ModifyToken({signer, proxyAddress, actionEnabled, handleError}: 
       // Check token format
       validateHexString(tokenAddress, 40);
 
-      const proxyContract = new ethers.Contract(proxyAddress, proxyArtifact.abi, signer);
+      // Validate Proxy address
+      validateHexString(resolvedProxyAddress, 40);
+      const formattedProxyAddress = formatAddress(resolvedProxyAddress);
+      const validProxyAddress = ethers.getAddress(formattedProxyAddress);
+      addLog("Valid proxy Address: " + validProxyAddress);
+
+      const proxyContract = new ethers.Contract(validProxyAddress, proxyArtifact.abi, signer);
 
       // Ensure the token address is a valid Ethereum address
       let formattedAddress = formatAddress(tokenAddress);
@@ -74,6 +90,31 @@ export function ModifyToken({signer, proxyAddress, actionEnabled, handleError}: 
   return (
     <div>
       <h4>Modify Token</h4>
+
+      {/* Mode switch */}
+      <InputGroup className="mb-3">
+        <Form.Check
+          type="switch"
+          id="manual-auto-switch"
+          label={useManualInput ? "Manual Mode" : "Auto Mode"}
+          checked={useManualInput}
+          onChange={() => setUseManualInput(!useManualInput)}
+        />
+      </InputGroup>
+
+      {/* Input field for manual Proxy address */}
+      {useManualInput && (
+        <InputGroup className="mb-3">
+          <Form.Control
+            type="text"
+            placeholder="Enter Proxy address as hex string"
+            value={manualProxyAddress}
+            onChange={(e) => setManualProxyAddress(e.target.value)}
+            required
+          />
+        </InputGroup>
+      )}
+
       <InputGroup className="mb-3">
         <InputGroup.Text>Token Index</InputGroup.Text>
         <Form.Control
