@@ -16,28 +16,25 @@ export function SetSettler({signer, proxyAddress, actionEnabled, handleError}: S
   const { addLog, clearLogs } = useLogger();
 
   const handleSetSettler = async () => {
-    if (!signer || !newSettler) {
-      handleError("Signer or settler address is missing");
-      return;
-    }
-
-    // Validate new settler address
-    if (!ethers.isAddress(newSettler)) {
-      handleError("Invalid address. Please enter a valid Ethereum address.");
-      return;
-    }
-
-    // Resolve Proxy address based on mode
-    const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
-
-    if (!resolvedProxyAddress) {
-      handleError("Proxy address is missing");
-      return;
-    }
-
-    clearLogs(); // Clear existing logs
-
     try {
+      if (!signer || !newSettler) {
+        throw new Error("Signer or settler address is missing");
+      }
+
+      // Validate new settler address
+      if (!ethers.isAddress(newSettler)) {
+        throw new Error("Invalid address. Please enter a valid Ethereum address.");
+      }
+
+      // Resolve Proxy address based on mode
+      const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
+
+      if (!resolvedProxyAddress) {
+        throw new Error("Proxy address is missing");
+      }
+
+      clearLogs(); // Clear existing logs
+
       // Validate Proxy address
       validateHexString(resolvedProxyAddress, 40);
       const formattedProxyAddress = formatAddress(resolvedProxyAddress);

@@ -78,6 +78,11 @@ export function GameController() {
   const withdrawAddress = useAppSelector(selectWithdrawAddress);
   const verifierAddress = useAppSelector(selectDummyVerifierAddress);
 
+  const handleError = (error: string) => {
+    setShowErrorModal(true);
+    setModalMessage(error);
+  }
+
   const handleConnectWallet = async () => {
     if (window.ethereum) {
       try {
@@ -97,11 +102,6 @@ export function GameController() {
   };
 
   const handleCloseModal = () => setShowErrorModal(false);
-
-  const handleError = (error: string) => {
-    setShowErrorModal(true);
-    setModalMessage(error);
-  }
 
   const components: ComponentWithProps[] = [
     { Component: AddTX, props: { signer, proxyAddress, withdrawAddress, addTXEnabled, setAddTXEnabled, handleError } },

@@ -16,27 +16,25 @@ export function AddToken({ signer, proxyAddress, actionEnabled, handleError }: A
   const { addLog, clearLogs } = useLogger();
 
   const handleAddToken = async () => {
-    if (!signer || !tokenAddress) {
-      handleError("Signer or tokenAddress is missing");
-      return;
-    }
-
-    // Resolve Proxy address based on mode
-    const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
-
-    if (!resolvedProxyAddress) {
-      handleError("Proxy address is missing");
-      return;
-    }
-
-    clearLogs(); // Clear existing logs
-
     try {
-       // Validate Proxy address
-       validateHexString(resolvedProxyAddress, 40);
-       const formattedProxyAddress = formatAddress(resolvedProxyAddress);
-       const validProxyAddress = ethers.getAddress(formattedProxyAddress);
-       addLog("Valid proxyAddress: " + validProxyAddress);
+      if (!signer || !tokenAddress) {
+        throw new Error("Signer or tokenAddress is missing");
+      }
+
+      // Resolve Proxy address based on mode
+      const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
+
+      if (!resolvedProxyAddress) {
+        throw new Error("Proxy address is missing");
+      }
+
+      clearLogs(); // Clear existing logs
+
+      // Validate Proxy address
+      validateHexString(resolvedProxyAddress, 40);
+      const formattedProxyAddress = formatAddress(resolvedProxyAddress);
+      const validProxyAddress = ethers.getAddress(formattedProxyAddress);
+      addLog("Valid proxyAddress: " + validProxyAddress);
 
       const proxyContract = new ethers.Contract(validProxyAddress, proxyArtifact.abi, signer);
 

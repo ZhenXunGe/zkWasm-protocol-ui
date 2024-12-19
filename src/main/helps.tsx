@@ -23,6 +23,11 @@ export function formatAddress(address: string) {
   return "0x" + cleanAddress;
 }
 
+// Validate if the index is a valid uint32 (between 0 and 2^32 - 1)
+export const validateIndex = (index: number) => {
+  return index >= 0 && index < 2 ** 32;
+};
+
 export function validateHexString (value: string, maxLength: number = 64) {
    // Create a dynamic regular expression based on the maxLength parameter
    const regex = new RegExp(`^(0x)?[0-9a-fA-F]{1,${maxLength}}$`);

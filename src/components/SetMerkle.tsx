@@ -16,22 +16,20 @@ export function SetMerkle({signer, proxyAddress, actionEnabled, handleError}: Se
   const { addLog, clearLogs } = useLogger();
 
   const handleSetMerkle = async () => {
-    if (!signer || !newRoot) {
-      handleError("Signer or new root is missing");
-      return;
-    }
-
-    // Resolve Proxy address based on mode
-    const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
-
-    if (!resolvedProxyAddress) {
-      handleError("Proxy address is missing");
-      return;
-    }
-
-    clearLogs(); // Clear existing logs
-
     try {
+      if (!signer || !newRoot) {
+        throw new Error("Signer or new root is missing");
+      }
+
+      // Resolve Proxy address based on mode
+      const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
+
+      if (!resolvedProxyAddress) {
+        throw new Error("Proxy address is missing");
+      }
+
+      clearLogs(); // Clear existing logs
+
       validateHexString(newRoot);
 
       // Validate Proxy address
@@ -65,8 +63,7 @@ export function SetMerkle({signer, proxyAddress, actionEnabled, handleError}: Se
       const proxyInfo = await proxyContract.getProxyInfo().catch(() => {
         // proxyContract.getProxyInfo is a view function
         // if throw error, maybe the address is not belong to Proxy
-        handleError("Error querying existing Proxy: The address may not belong to a Proxy contract");
-        return;
+        throw new Error("Error querying existing Proxy: The address may not belong to a Proxy contract");
       });
       addLog("merkle root after set merkle:: " + proxyInfo.merkle_root);
 

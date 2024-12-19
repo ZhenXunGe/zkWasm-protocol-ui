@@ -42,22 +42,20 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
   const { addLog, clearLogs } = useLogger();
 
   const handleTopUp = async () => {
-    if (!signer || !tidx || !amount || !pid1 || !pid2) {
-      handleError("Signer, tidx, amount, pid1 or pid2 is missing");
-      return;
-    }
-
-    // Resolve Proxy address based on mode
-    const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
-
-    if (!resolvedProxyAddress) {
-      handleError("Proxy address is missing");
-      return;
-    }
-
-    clearLogs(); // Clear existing logs
-
     try {
+      if (!signer || !tidx || !amount || !pid1 || !pid2) {
+        throw new Error("Signer, tidx, amount, pid1 or pid2 is missing");
+      }
+
+      // Resolve Proxy address based on mode
+      const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
+
+      if (!resolvedProxyAddress) {
+        throw new Error("Proxy address is missing");
+      }
+
+      clearLogs(); // Clear existing logs
+
       // Validate Proxy address
       validateHexString(resolvedProxyAddress, 40);
       const formattedProxyAddress = formatAddress(resolvedProxyAddress);
@@ -157,7 +155,8 @@ export function TopUp ({signer, proxyAddress, actionEnabled, handleError}: TopUp
   return (
     <div>
       <h4>Topup Your Ethereum Wallet</h4>
-{/* Mode switch */}
+
+      {/* Mode switch */}
       <InputGroup className="mb-3">
         <Form.Check
           type="switch"

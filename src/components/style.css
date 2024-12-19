@@ -13,8 +13,8 @@ button {
 
 .connectWallet.btn {
   width: auto;
-  max-width: 200px; /* Adjust as per your preference */
-  padding: 10px 20px; /* Control padding */
+  max-width: 200px;
+  padding: 10px 20px;
 }
 
 .setCommitments,

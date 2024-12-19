@@ -18,22 +18,20 @@ export function SetVerifierImageCommitments({signer, proxyAddress, actionEnabled
   const { addLog, clearLogs } = useLogger();
 
   const handleSetCommitments = async () => {
-    if (!signer || !commitment1 || !commitment2 || !commitment3) {
-      handleError("Signer or commitment is missing");
-      return;
-    }
-
-    // Resolve Proxy address based on mode
-    const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
-
-    if (!resolvedProxyAddress) {
-      handleError("Proxy address is missing");
-      return;
-    }
-
-    clearLogs(); // Clear existing logs
-
     try {
+      if (!signer || !commitment1 || !commitment2 || !commitment3) {
+        throw new Error("Signer or commitment is missing");
+      }
+
+      // Resolve Proxy address based on mode
+      const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
+
+      if (!resolvedProxyAddress) {
+        throw new Error("Proxy address is missing");
+      }
+
+      clearLogs(); // Clear existing logs
+
       validateHexString(commitment1);
       validateHexString(commitment2);
       validateHexString(commitment3);

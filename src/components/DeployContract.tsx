@@ -105,17 +105,15 @@ export const DeployContract = ({
   };
 
   const handleDeploy = async () => {
-    if (!signer) {
-      handleError("Signer is not available. Please connect your wallet.");
-      return;
-    }
-
-    if (proxyAddress) {
-      handleError("Proxy contract is already deployed");
-      return;
-    }
-
     try {
+      if (!signer) {
+        throw new Error("Signer is not available. Please connect your wallet.");
+      }
+
+      if (proxyAddress) {
+        throw new Error("Proxy contract is already deployed");
+      }
+
       // Prepare params for Proxy contract
       const { chainId } = await provider.getNetwork();
       addLog(`netid:, ${chainId}`);
@@ -136,7 +134,7 @@ export const DeployContract = ({
 
       // If there were failures, inform the user
       if (results.some((res) => res.status === "Failed")) {
-        handleError("Some contracts failed to deploy. Check the logs for details.");
+        throw new Error("Some contracts failed to deploy. Check the logs for details.");
       } else {
         setActionEnabled(false);
         setAddTXEnabled(false);

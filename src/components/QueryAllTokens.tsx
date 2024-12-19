@@ -15,22 +15,20 @@ export function QueryAllTokens({signer, proxyAddress, actionEnabled, handleError
   const { addLog, clearLogs } = useLogger();
 
   const handleQueryAllTokens = async () => {
-    if (!signer) {
-      handleError("Signer is missing");
-      return;
-    }
-
-    // Resolve Proxy address based on mode
-    const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
-
-    if (!resolvedProxyAddress) {
-      handleError("Proxy address is missing");
-      return;
-    }
-
-    clearLogs(); // Clear existing logs
-
     try {
+      if (!signer) {
+        throw new Error("Signer is missing");
+      }
+
+      // Resolve Proxy address based on mode
+      const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
+
+      if (!resolvedProxyAddress) {
+        throw new Error("Proxy address is missing");
+      }
+
+      clearLogs(); // Clear existing logs
+
       // Validate Proxy address
       validateHexString(resolvedProxyAddress, 40);
       const formattedProxyAddress = formatAddress(resolvedProxyAddress);

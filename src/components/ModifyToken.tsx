@@ -6,13 +6,8 @@ import Form from 'react-bootstrap/Form';
 import InputGroup from 'react-bootstrap/InputGroup';
 import { useState } from 'react';
 import { ModifyTokenProps } from '../main/props';
-import { formatAddress, validateHexString, queryAllTokens } from "../main/helps";
+import { formatAddress, validateHexString, validateIndex, queryAllTokens } from "../main/helps";
 import { useLogger } from '../main/logger/LoggerContext';
-
-// Validate if the index is a valid uint32 (between 0 and 2^32 - 1)
-const validateIndex = (index: number) => {
-  return index >= 0 && index < 2 ** 32;
-};
 
 export function ModifyToken({signer, proxyAddress, actionEnabled, handleError}: ModifyTokenProps) {
   const [index, setIndex] = useState(0);
@@ -22,22 +17,20 @@ export function ModifyToken({signer, proxyAddress, actionEnabled, handleError}: 
   const { addLog, clearLogs } = useLogger();
 
   const handleModifyToken = async () => {
-    if (!signer || !index ||!tokenAddress) {
-      handleError("Signer, token index or token address is missing");
-      return;
-    }
-
-    // Resolve Proxy address based on mode
-    const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
-
-    if (!resolvedProxyAddress) {
-      handleError("Proxy address is missing");
-      return;
-    }
-
-    clearLogs(); // Clear existing logs
-
     try {
+      if (!signer || !index ||!tokenAddress) {
+        throw new Error("Signer, token index or token address is missing");
+      }
+
+      // Resolve Proxy address based on mode
+      const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
+
+      if (!resolvedProxyAddress) {
+        throw new Error("Proxy address is missing");
+      }
+
+      clearLogs(); // Clear existing logs
+
       // Validate index (uint32)
       if (!validateIndex(index)) {
         throw new Error('Index must be a valid uint32 value (0 to 4294967295)');
@@ -84,7 +77,7 @@ export function ModifyToken({signer, proxyAddress, actionEnabled, handleError}: 
 
       addLog('Token modified successfully!');
     } catch (error) {
-      handleError("Error adding token:" + error);
+      handleError("Error modifying token:" + error);
     }
   }
 

@@ -17,28 +17,25 @@ export function AddTX({signer, proxyAddress, withdrawAddress, addTXEnabled, setA
   const { addLog } = useLogger();
 
   const handleAddTX = async () => {
-    if (!signer) {
-      handleError("Signer is missing");
-      return;
-    }
-
-    // Resolve Proxy address based on mode
-    const resolvedProxyAddress = useManualProxyInput  ? proxyAddress : manualProxyAddress;
-
-    if (!resolvedProxyAddress) {
-      handleError("Proxy address is missing");
-      return;
-    }
-
-    // Resolve Withdraw address based on mode
-    const resolvedWithdrawAddress = useManualWithdrawInput ? withdrawAddress : manualWithdrawAddress;
-
-    if (!resolvedWithdrawAddress) {
-      handleError("Withdraw address is missing");
-      return;
-    }
-
     try {
+      if (!signer) {
+        throw new Error("Signer is missing");
+      }
+
+      // Resolve Proxy address based on mode
+      const resolvedProxyAddress = useManualProxyInput  ? proxyAddress : manualProxyAddress;
+
+      if (!resolvedProxyAddress) {
+        throw new Error("Proxy address is missing");
+      }
+
+      // Resolve Withdraw address based on mode
+      const resolvedWithdrawAddress = useManualWithdrawInput ? withdrawAddress : manualWithdrawAddress;
+
+      if (!resolvedWithdrawAddress) {
+        throw new Error("Withdraw address is missing");
+      }
+
       // Validate Proxy address
       validateHexString(resolvedProxyAddress, 40);
       const formattedProxyAddress = formatAddress(resolvedProxyAddress);
@@ -47,11 +44,11 @@ export function AddTX({signer, proxyAddress, withdrawAddress, addTXEnabled, setA
 
       const proxyContract = new ethers.Contract(validProxyAddress, proxyArtifact.abi, signer);
 
-       // Validate Withdraw address
-       validateHexString(resolvedWithdrawAddress, 40);
-       const formattedWihdrawAddress = formatAddress(resolvedWithdrawAddress);
-       const validWithdrawAddress = ethers.getAddress(formattedWihdrawAddress);
-       addLog("Valid Withdraw Address: " + validWithdrawAddress);
+      // Validate Withdraw address
+      validateHexString(resolvedWithdrawAddress, 40);
+      const formattedWihdrawAddress = formatAddress(resolvedWithdrawAddress);
+      const validWithdrawAddress = ethers.getAddress(formattedWihdrawAddress);
+      addLog("Valid Withdraw Address: " + validWithdrawAddress);
 
       // Excute Proxy contract's addTransaction
       const tx = await proxyContract.addTransaction(validWithdrawAddress, true);

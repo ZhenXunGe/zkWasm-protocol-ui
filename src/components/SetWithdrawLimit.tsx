@@ -16,22 +16,20 @@ export function SetWithdrawLimit({signer, proxyAddress, actionEnabled, handleErr
   const { addLog, clearLogs } = useLogger();
 
   const handleSetWithdrawLimit = async () => {
-    if (!signer || !withdrawLimit) {
-      handleError("Signer or withdrawLimit is missing");
-      return;
-    }
-
-     // Resolve Proxy address based on mode
-     const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
-
-     if (!resolvedProxyAddress) {
-       handleError("Proxy address is missing");
-       return;
-     }
-
-    clearLogs(); // Clear existing logs
-
     try {
+      if (!signer || !withdrawLimit) {
+        throw new Error("Signer or withdrawLimit is missing");
+      }
+
+      // Resolve Proxy address based on mode
+      const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
+
+      if (!resolvedProxyAddress) {
+        throw new Error("Proxy address is missing");
+      }
+
+      clearLogs(); // Clear existing logs
+
       validateHexString(withdrawLimit);
 
       // Validate Proxy address

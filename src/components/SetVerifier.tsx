@@ -17,30 +17,27 @@ export function SetVerifier({signer, proxyAddress, verifierAddress, actionEnable
   const { addLog, clearLogs } = useLogger();
 
   const handleSetVerifier = async () => {
-    if (!signer) {
-      handleError("Signer is missing");
-      return;
-    }
-
-    // Resolve Proxy address based on mode
-    const resolvedProxyAddress = useManualProxyInput ? proxyAddress : manualProxyAddress;
-
-    if (!resolvedProxyAddress) {
-      handleError("Proxy address is missing");
-      return;
-    }
-
-     // Resolve Verifier address based on mode
-     const resolvedVerifierAddress = useManualVerifierInput ? verifierAddress : manualVerifierAddress;
-
-     if (!resolvedVerifierAddress) {
-       handleError("Verifier address is missing");
-       return;
-     }
-
-    clearLogs(); // Clear existing logs
-
     try {
+      if (!signer) {
+        throw new Error("Signer is missing");
+      }
+
+      // Resolve Proxy address based on mode
+      const resolvedProxyAddress = useManualProxyInput ? proxyAddress : manualProxyAddress;
+
+      if (!resolvedProxyAddress) {
+        throw new Error("Proxy address is missing");
+      }
+
+      // Resolve Verifier address based on mode
+      const resolvedVerifierAddress = useManualVerifierInput ? verifierAddress : manualVerifierAddress;
+
+      if (!resolvedVerifierAddress) {
+        throw new Error("Verifier address is missing");
+      }
+
+      clearLogs(); // Clear existing logs
+
       // Validate Proxy address
       validateHexString(resolvedProxyAddress, 40);
       const formattedProxyAddress = formatAddress(resolvedProxyAddress);

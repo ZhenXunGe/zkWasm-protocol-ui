@@ -16,28 +16,25 @@ export function SetOwner({signer, proxyAddress, actionEnabled, handleError}: Set
   const { addLog, clearLogs } = useLogger();
 
   const handleSetOwner = async () => {
-    if (!signer || !newOwner) {
-      handleError("Signer or new owner address is missing");
-      return;
-    }
-
-    // Validate new owner address
-    if (!ethers.isAddress(newOwner)) {
-      handleError("Invalid address. Please enter a valid Ethereum address.");
-      return;
-    }
-
-    // Resolve Proxy address based on mode
-    const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
-
-    if (!resolvedProxyAddress) {
-      handleError("Proxy address is missing");
-      return;
-    }
-
-    clearLogs(); // Clear existing logs
-
     try {
+      if (!signer || !newOwner) {
+        throw new Error("Signer or new owner address is missing");
+      }
+
+      // Validate new owner address
+      if (!ethers.isAddress(newOwner)) {
+        throw new Error("Invalid address. Please enter a valid Ethereum address.");
+      }
+
+      // Resolve Proxy address based on mode
+      const resolvedProxyAddress = useManualInput ? proxyAddress : manualProxyAddress;
+
+      if (!resolvedProxyAddress) {
+        throw new Error("Proxy address is missing");
+      }
+
+      clearLogs(); // Clear existing logs
+
       // Validate Proxy address
       validateHexString(resolvedProxyAddress, 40);
       const formattedProxyAddress = formatAddress(resolvedProxyAddress);
@@ -50,8 +47,7 @@ export function SetOwner({signer, proxyAddress, actionEnabled, handleError}: Set
       const infoBeforeSet = await proxyContract.getProxyInfo().catch(() => {
         // proxyContract.getProxyInfo is a view function
         // if throw error, maybe the address is not belong to Proxy
-        handleError("Error querying existing Proxy: The address may not belong to a Proxy contract");
-        return;
+        throw new Error("Error querying existing Proxy: The address may not belong to a Proxy contract");
       });
       addLog("owner address before set: " + infoBeforeSet.owner);
 
@@ -69,8 +65,7 @@ export function SetOwner({signer, proxyAddress, actionEnabled, handleError}: Set
       const infoAfterSet = await proxyContract.getProxyInfo().catch(() => {
         // proxyContract.getProxyInfo is a view function
         // if throw error, maybe the address is not belong to Proxy
-        handleError("Error querying existing Proxy: The address may not belong to a Proxy contract");
-        return;
+        throw new Error("Error querying existing Proxy: The address may not belong to a Proxy contract");
       });
       addLog("owner address after set: " + infoAfterSet.owner);
 

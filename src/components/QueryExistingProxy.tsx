@@ -23,22 +23,20 @@ export function QueryExistingProxy({signer, handleError}: QueryExistingProxyProp
   };
 
   const queryProxyInfo = async () => {
-    if (!signer || !queryAddress) {
-      handleError("Signer or query address is missing");
-      return;
-    }
-
-    clearLogs(); // Clear existing logs
-
     try {
+      if (!signer || !queryAddress) {
+        throw new Error("Signer or query address is missing");
+      }
+
+      clearLogs(); // Clear existing logs
+
       // Get proxy info
       const correctAddress = ethers.getAddress(queryAddress);
       const proxyContract = new ethers.Contract(correctAddress, proxyArtifact.abi, signer);
       const proxyInfo = await proxyContract.getProxyInfo().catch(() => {
         // proxyContract.getProxyInfo is a view function
         // if throw error, maybe the address is not belong to Proxy
-        handleError("Error querying existing Proxy: The address may not belong to a Proxy contract");
-        return;
+        throw new Error("Error querying existing Proxy: The address may not belong to a Proxy contract");
       });
 
       // Get all events
