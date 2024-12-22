@@ -8,37 +8,37 @@ button {
 }
 
 .steps {
-  margin: 10px;
+  margin: 10px auto;
 }
 
 .connectWallet.btn {
   width: auto;
-  max-width: 200px; /* Adjust as per your preference */
-  padding: 10px 20px; /* Control padding */
+  max-width: 200px;
+  padding: 10px 20px;
 }
 
-.setOwner.btn,
-.setMerkle.btn,
-.setSettler.btn,
-.setWithdrawLimit.btn,
 .queryAllTokens.btn,
-.addToken.btn,
+.modifyToken.btn,
 .topUp.btn,
-.setCommitments {
-  margin-top: 20px;
-}
-
-.setCommitments > input {
-  margin-left: 10px;
+.addToken.btn,
+.addTX.btn,
+.setVerifier.btn,
+.setVerifierImgCom.btn,
+.setWithdrawLimit.btn,
+.setSettler.btn,
+.queryProxyInfo.btn,
+.setMerkle.btn,
+.setOwner.btn {
+  margin-bottom: 20px;
 }
 
 .input-group-text > .form-control {
   display: block;
 }
 
-.proxyInfo {
-  width: 90vw;
-  height: 300px;
+.logs {
+  width: 100%;
+  height: 200px;
   border: 1px solid black;
   overflow: auto;
   padding: 10px;
@@ -55,4 +55,8 @@ button {
 
 .container {
   margin-bottom: 20px;
+}
+
+div.card {
+  padding: 0;
 }

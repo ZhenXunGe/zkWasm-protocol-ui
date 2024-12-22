@@ -1,33 +1,42 @@
+import React from "react";
 import { ethers } from 'ethers';
 import proxyArtifact from "zkWasm-protocol/artifacts/contracts/Proxy.sol/Proxy.json";
 import Button from 'react-bootstrap/Button';
+import InputGroup from 'react-bootstrap/InputGroup';
 import Form from 'react-bootstrap/Form';
-import { useState } from 'react';
 import { QueryAllTokensProps } from '../main/props';
-import { Token } from "../main/types";
+import { useLogger } from '../main/logger/LoggerContext';
+import { formatAddress, validateHexString, queryAllTokens } from "../main/helps";
+import { useState } from 'react';
 
 export function QueryAllTokens({signer, proxyAddress, actionEnabled, handleError}: QueryAllTokensProps) {
-  const [tokens, setTokens] = useState("");
+  const [manualProxyAddress, setManualProxyAddress] = useState(""); // Proxy address now user-inputted
+  const [useManualProxyInput, setuseManualProxyInput] = useState(true); // Switch for manual/Auto Proxy Mode
+  const { addLog, clearLogs } = useLogger();
 
   const handleQueryAllTokens = async () => {
-    if (!signer || !proxyAddress) {
-      handleError("Signer or Proxy address is missing");
-      return;
-    }
-
     try {
-      const proxyContract = new ethers.Contract(proxyAddress, proxyArtifact.abi, signer);
-      const tokens = await proxyContract.allTokens();
-      const tokenArray = tokens.map((token: Token) => ({
-        tokenUid: token.token_uid.toString()
-      }));
-
-      if(tokenArray.length != 0) {
-        const formattedTokens = JSON.stringify(tokenArray, null, 2);
-        setTokens(formattedTokens);
-      } else {
-        setTokens("There no tokens");
+      if (!signer) {
+        throw new Error("Signer is missing");
       }
+
+      // Resolve Proxy address based on mode
+      const resolvedProxyAddress = useManualProxyInput ? manualProxyAddress : proxyAddress;
+
+      if (!resolvedProxyAddress) {
+        throw new Error("Proxy address is missing");
+      }
+
+      clearLogs(); // Clear existing logs
+
+      // Validate Proxy address
+      validateHexString(resolvedProxyAddress, 40);
+      const formattedProxyAddress = formatAddress(resolvedProxyAddress);
+      const validProxyAddress = ethers.getAddress(formattedProxyAddress);
+      addLog("Valid Proxy address: " + validProxyAddress);
+
+      const proxyContract = new ethers.Contract(validProxyAddress, proxyArtifact.abi, signer);
+      queryAllTokens(proxyContract, addLog);
     } catch (error) {
       handleError("Error querying tokens:" + error);
     }
@@ -36,18 +45,36 @@ export function QueryAllTokens({signer, proxyAddress, actionEnabled, handleError
   return (
     <div>
       <h4>Query All Tokens</h4>
-      <Form.Group controlId="formTokens" className="mt-3">
-        <Form.Control
-          as="textarea"
-          rows={10}
-          value={tokens}
-          readOnly
-          placeholder="Token information will appear here after querying..."
+
+      {/* Mode switch */}
+      <InputGroup className="mb-3">
+        <Form.Check
+          type="switch"
+          id="manual-auto-switch"
+          label={useManualProxyInput ? "Manual Proxy Mode" : "Auto Proxy Mode"}
+          checked={useManualProxyInput}
+          onChange={() => setuseManualProxyInput(!useManualProxyInput)}
         />
-      </Form.Group>
-      <Button className="queryAllTokens" variant="primary" onClick={handleQueryAllTokens} disabled={actionEnabled}>
-        QUERY ALL TOKENS
-      </Button>
+      </InputGroup>
+
+      {/* Input field for manual Proxy address */}
+      <InputGroup className="mb-3">
+        <InputGroup.Text>Proxy Address</InputGroup.Text>
+        <Form.Control
+          type="text"
+          placeholder="Enter Proxy address as hex string"
+          value={useManualProxyInput ? manualProxyAddress : proxyAddress || "No deployed Proxy address available"}
+          onChange={(e) => setManualProxyAddress(e.target.value)}
+          disabled={!useManualProxyInput}
+          required
+        />
+      </InputGroup>
+
+      <InputGroup className="mb-3">
+        <Button className="" variant="primary" onClick={handleQueryAllTokens} disabled={actionEnabled}>
+          QUERY ALL TOKENS
+        </Button>
+      </InputGroup>
     </div>
   )
 }

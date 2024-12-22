@@ -10,7 +10,7 @@ interface State {
 const initialState: State = {
   proxyAddress: null,
   withdrawAddress: null,
-  dummyVerifierAddress: null,
+  dummyVerifierAddress: null
 };
 
 const contractSlice = createSlice({

@@ -1,70 +1,121 @@
+import React from "react";
 import { ethers } from 'ethers';
 import proxyArtifact from "zkWasm-protocol/artifacts/contracts/Proxy.sol/Proxy.json";
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
+import InputGroup from 'react-bootstrap/InputGroup';
 import { useState } from 'react';
 import { AddTokenProps } from '../main/props';
-import { formatAddress, validateHexString } from "../main/helps";
+import { formatAddress, validateHexString, queryAllTokens } from "../main/helps";
+import { useLogger } from '../main/logger/LoggerContext';
 
-export function AddToken({signer, proxyAddress, actionEnabled, handleError}: AddTokenProps) {
+export function AddToken({ signer, proxyAddress, actionEnabled, handleError }: AddTokenProps) {
   const [tokenAddress, setTokenAddress] = useState("");
+  const [manualProxyAddress, setManualProxyAddress] = useState(""); // Proxy address now user-inputted
+  const [useManualProxyInput, setuseManualProxyInput] = useState(true); // Switch for manual/Auto Proxy Mode
+  const { addLog, clearLogs } = useLogger();
 
   const handleAddToken = async () => {
-    if (!signer || !proxyAddress || !tokenAddress) {
-      handleError("Signer, Proxy address or tokenAddress is missing");
-      return;
-    }
-
     try {
-      const proxyContract = new ethers.Contract(proxyAddress, proxyArtifact.abi, signer);
+      if (!signer || !tokenAddress) {
+        throw new Error("Signer or tokenAddress is missing");
+      }
 
-      // Check token format
+      // Resolve Proxy address based on mode
+      const resolvedProxyAddress = useManualProxyInput ? manualProxyAddress : proxyAddress;
+
+      if (!resolvedProxyAddress) {
+        throw new Error("Proxy address is missing");
+      }
+
+      clearLogs(); // Clear existing logs
+
+      // Validate Proxy address
+      validateHexString(resolvedProxyAddress, 40);
+      const formattedProxyAddress = formatAddress(resolvedProxyAddress);
+      const validProxyAddress = ethers.getAddress(formattedProxyAddress);
+      addLog("Valid Proxy address: " + validProxyAddress);
+
+      const proxyContract = new ethers.Contract(validProxyAddress, proxyArtifact.abi, signer);
+
+      // Validate token address
       validateHexString(tokenAddress, 40);
-
-      // Ensure the token address is a valid Ethereum address
-      let formattedAddress = formatAddress(tokenAddress);
+      const formattedAddress = formatAddress(tokenAddress);
       const validTokenAddress = ethers.getAddress(formattedAddress);
-      console.log("Valid Address:", validTokenAddress)
+      addLog("Valid token address: " + validTokenAddress);
 
       // Call the _l1_address function with the valid token address
-      const l1token = await proxyContract._l1_address(validTokenAddress)
-      console.log("tokenaddr, l1tokenaddr(encoded)", tokenAddress, l1token);
+      const l1token = await proxyContract._l1_address(validTokenAddress);
+      addLog("tokenaddr: " + tokenAddress + ", l1tokenaddr(encoded): " + l1token);
 
-      const isLocal = await proxyContract._is_local(l1token)
-      if(!isLocal) {
-        throw new Error("token is not a local erc token");
+      const isLocal = await proxyContract._is_local(l1token);
+      if (!isLocal) {
+        throw new Error("Token is not a local ERC token");
       }
 
       const tx = await proxyContract.addToken(l1token);
-      console.log("Transaction sent:", tx.hash);
+      addLog("Transaction sent: " + tx.hash);
 
-      // Wait the transaction confirmed
+      // Wait for transaction confirmation
       const receipt = await tx.wait();
-      console.log("Transaction confirmed:", receipt.hash);
-      console.log("Gas used:", receipt.gasUsed.toString());
-      console.log("Status:", receipt.status === 1 ? "Success" : "Failure");
+      addLog("Transaction confirmed: " + receipt.hash);
+      addLog("Gas used: " + receipt.gasUsed.toString());
+      const statusRes = receipt.status === 1 ? "Success" : "Failure";
+      addLog("Status: " + statusRes);
 
-      alert("Token added successfully!");
+      // Query all tokens
+      queryAllTokens(proxyContract, addLog);
+
+      addLog("Token added successfully!");
     } catch (error) {
-      handleError("Error adding token:" + error);
+      handleError("Error adding token: " + error);
     }
-  }
+  };
 
   return (
     <div>
       <h4>Add Token</h4>
-      <Form.Group controlId="formToken">
+
+      {/* Mode switch */}
+      <InputGroup className="mb-3">
+        <Form.Check
+          type="switch"
+          id="manual-auto-switch"
+          label={useManualProxyInput ? "Manual Proxy Mode" : "Auto Proxy Mode"}
+          checked={useManualProxyInput}
+          onChange={() => setuseManualProxyInput(!useManualProxyInput)}
+        />
+      </InputGroup>
+
+      {/* Input field for manual Proxy address */}
+      <InputGroup className="mb-3">
+        <InputGroup.Text>Proxy Address</InputGroup.Text>
         <Form.Control
           type="text"
-          placeholder="Enter tokenAddress as hex string(uint256)"
+          placeholder="Enter Proxy address as hex string"
+          value={useManualProxyInput ? manualProxyAddress : proxyAddress || "No deployed Proxy address available"}
+          onChange={(e) => setManualProxyAddress(e.target.value)}
+          disabled={!useManualProxyInput}
+          required
+        />
+      </InputGroup>
+
+      {/* Input field for token address */}
+      <InputGroup className="mb-3">
+        <InputGroup.Text>Token Address</InputGroup.Text>
+        <Form.Control
+          type="text"
+          placeholder="Enter token address as hex string(uint256)"
           value={tokenAddress}
           onChange={(e) => setTokenAddress(e.target.value)}
           required
         />
-      </Form.Group>
+      </InputGroup>
+
+      {/* Add Token Button */}
       <Button className="addToken" variant="primary" onClick={handleAddToken} disabled={actionEnabled}>
         ADD TOKEN
       </Button>
     </div>
-  )
+  );
 }

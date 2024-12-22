@@ -3,8 +3,9 @@ import { ethers } from 'ethers';
 export interface AddTXProps {
   signer: ethers.JsonRpcSigner | null;
   proxyAddress: string | null;
-  actionEnabled: boolean;
   withdrawAddress: string | null;
+  addTXEnabled: boolean;
+  setAddTXEnabled:  React.Dispatch<React.SetStateAction<boolean>>;
   handleError: (error: string) => void;
 }
 
@@ -19,6 +20,7 @@ export interface DeployContractProps {
   signer: ethers.JsonRpcSigner | null;
   proxyAddress: string | null;
   setActionEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  setAddTXEnabled:  React.Dispatch<React.SetStateAction<boolean>>;
   handleError: (error: string) => void;
 }
 
@@ -30,20 +32,21 @@ export interface ErrorModalProps {
 
 export interface ModifyTokenProps {
   signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null,
+  proxyAddress: string | null;
   actionEnabled: boolean;
   handleError: (error: string) => void;
 }
 
 export interface QueryAllTokensProps {
   signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null,
+  proxyAddress: string | null;
   actionEnabled: boolean;
   handleError: (error: string) => void;
 }
 
 export interface QueryExistingProxyProps {
   signer: ethers.JsonRpcSigner | null;
+  proxyAddress: string | null;
   handleError: (error: string) => void;
 }
 
@@ -56,14 +59,14 @@ export interface SetMerkleProps {
 
 export interface SetSettlerProps {
   signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null,
+  proxyAddress: string | null;
   actionEnabled: boolean;
   handleError: (error: string) => void;
 }
 
 export interface SetOwnerProps {
   signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null,
+  proxyAddress: string | null;
   actionEnabled: boolean;
   handleError: (error: string) => void;
 }
@@ -71,21 +74,21 @@ export interface SetOwnerProps {
 export interface SetVerifierProps {
   signer: ethers.JsonRpcSigner | null;
   proxyAddress: string | null;
+  verifierAddress: string | null;
   actionEnabled: boolean;
-  dummyVerifierAddress: string | null;
   handleError: (error: string) => void;
 }
 
 export interface SetVerifierImageCommitmentsProps {
   signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null,
+  proxyAddress: string | null;
   actionEnabled: boolean;
   handleError: (error: string) => void;
 }
 
 export interface SetWithdrawLimitProps {
   signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null,
+  proxyAddress: string | null;
   actionEnabled: boolean;
   handleError: (error: string) => void;
 }

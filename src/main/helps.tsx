@@ -1,3 +1,6 @@
+import { ethers } from 'ethers';
+import { Token } from "./types";
+
 export function removeHexPrefix(value: string): string {
   return value.startsWith("0x") ? value.slice(2) : value;
 }
@@ -20,6 +23,11 @@ export function formatAddress(address: string) {
   return "0x" + cleanAddress;
 }
 
+// Validate if the index is a valid uint32 (between 0 and 2^32 - 1)
+export const validateIndex = (index: number) => {
+  return index >= 0 && index < 2 ** 32;
+};
+
 export function validateHexString (value: string, maxLength: number = 64) {
    // Create a dynamic regular expression based on the maxLength parameter
    const regex = new RegExp(`^(0x)?[0-9a-fA-F]{1,${maxLength}}$`);
@@ -31,3 +39,21 @@ export function validateHexString (value: string, maxLength: number = 64) {
 
   return null; // Return null if valid
 };
+
+export async function queryAllTokens(
+  proxyContract: ethers.Contract,
+  addLog: (message: string) => void
+) {
+  const tokens = await proxyContract.allTokens();
+  const tokenArray = tokens.map((token: Token) => ({
+    tokenUid: token.token_uid.toString()
+  }));
+  addLog("All tokens:");
+  if(tokenArray.length !== 0) {
+    for(let i = 0; i < tokenArray.length; i++) {
+      addLog(JSON.stringify(tokenArray[i]));
+    }
+  } else {
+    addLog("There no tokens");
+  }
+}
