@@ -2,9 +2,12 @@ import { ethers } from 'ethers';
 import { Log, LogType } from './types';
 
 export interface AddTXProps {
+  show: boolean;
+  onClose: () => void;
+  currentProxy: ethers.Contract;
+  queryProxyInfo: () => Promise<void>;
+  chainId: string;
   signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null;
-  withdrawAddress: string | null;
 }
 
 export interface AddTokenProps {
@@ -13,15 +16,6 @@ export interface AddTokenProps {
   currentProxy: ethers.Contract;
   queryProxyInfo: () => Promise<void>;
   chainId: string;
-}
-
-export interface DeployContractProps {
-  signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null;
-  withdrawAddress: string | null;
-  verifierAddress: string | null;
-  setActiveTab: React.Dispatch<React.SetStateAction<"existing" | "start" | null>>;
-  addLog: (type: LogType, message: string, chainId?: string) => void;
 }
 
 export interface ErrorModalProps {
@@ -48,10 +42,6 @@ export interface QueryAllTokensProps {
 
 export interface QueryExistingProxyProps {
   signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null;
-  withdrawAddress: string | null;
-  verifierAddress: string | null;
-  setActiveTab: React.Dispatch<React.SetStateAction<"existing" | "start" | null>>;
   addLog: (type: LogType, message: string, chainId?: string) => void;
 }
 
@@ -93,7 +83,6 @@ export interface TopUpProps {
   currentProxy: ethers.Contract;
   proxyAddress: string | null;
   signer: ethers.Signer | null;
-  queryProxyInfo: () => Promise<void>;
   chainId: string;
   tokenIndex: number | null;
 }
@@ -112,13 +101,22 @@ export interface SetWithdrawLimitProps {
   chainId: string;
 }
 
-export interface TokenListModalProps {
+export interface TokenListProps {
   show: boolean;
   onClose: () => void;
   currentProxy: ethers.Contract;
   tokenList: string[];
   proxyAddress: string | null;
-  signer: ethers.Signer | null;
   queryProxyInfo: () => Promise<void>;
   chainId: string;
+  signer:  ethers.JsonRpcSigner | null;
+}
+
+export interface SetVerifierProps {
+  show: boolean;
+  onClose: () => void;
+  currentProxy: ethers.Contract;
+  queryProxyInfo: () => Promise<void>;
+  chainId: string;
+  signer:  ethers.JsonRpcSigner | null;
 }

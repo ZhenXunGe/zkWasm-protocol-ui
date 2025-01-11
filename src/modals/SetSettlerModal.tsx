@@ -25,7 +25,6 @@ export const SetSettlerModal: React.FC<SetSettlerModalProps> = ({
       }
 
       setIsSettingSettler(true);
-      setErrorMessage("");
 
       // Validate new settler address
       const cleanedNewSettler = newSettler.trim();
@@ -33,6 +32,7 @@ export const SetSettlerModal: React.FC<SetSettlerModalProps> = ({
         throw new Error("Invalid address. Please enter a valid Ethereum address.");
       }
 
+      addLog("info", `Please sign the transaction in your wallet. This signature is required to authorize the execution of the contract function.`);
       const tx = await currentProxy.setSettler(newSettler);
       addLog("info", "Transaction sent")
       addLog("txhash", tx.hash, chainId);
@@ -41,10 +41,16 @@ export const SetSettlerModal: React.FC<SetSettlerModalProps> = ({
       const receipt = await tx.wait();
       addLog("info", "Transaction confirmed. Gas used: " + receipt.gasUsed.toString());
       const statusRes = receipt.status === 1 ? "Success" : "Failure";
-      addLog("info", "Status: " + statusRes);
+      addLog("info", "Transaction Receipt Status: " + statusRes);
+
+      // Query current settler
+      const settlerAfterSet = await currentProxy.getSettler();
+      addLog("contractAddr", "Settler address after set: " + settlerAfterSet.owner);
 
       addLog("success", "Settler changed successfully!");
+      addLog("info", "Start updating latest Proxy info...");
       await queryProxyInfo();
+      setNewSettler("");
       setIsSettingSettler(false);
       onClose();
     } catch (error) {
@@ -63,7 +69,7 @@ export const SetSettlerModal: React.FC<SetSettlerModalProps> = ({
   }
 
   return (
-    <Modal show={show} onHide={closeModal}>
+    <Modal show={show} backdrop="static" onHide={closeModal}>
       <Modal.Header closeButton>
         <Modal.Title>Set Settler</Modal.Title>
       </Modal.Header>

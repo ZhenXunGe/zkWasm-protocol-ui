@@ -1,129 +1,112 @@
-import React, { useState } from "react";
-import { ethers } from 'ethers';
-import { FaHandPointer } from "react-icons/fa";
-import proxyArtifact from "zkWasm-protocol/artifacts/contracts/Proxy.sol/Proxy.json";
+import React, { useMemo, useState } from "react";
+import { ethers, BrowserProvider } from 'ethers';
 import { QueryExistingProxyProps } from '../main/props';
 import { ProxyContent } from "../main/types";
 import { formatAddress, validateHexString } from "../main/utils";
 import { fetchChainName, formatErrorMessage } from '../main/utils';
-import { Button, Form, InputGroup, Spinner, Table } from "react-bootstrap";
+import { Button, Form, Alert, InputGroup, Spinner, Table } from "react-bootstrap";
 import { SetWithdrawLimitModal } from "../modals/SetWithdrawLimitModal";
-import { TokenListModal } from "../modals/TokenListModal";
-import { fetchTokens } from "../main/utils";
+import { TokenList } from "./TokenList";
+import { deployContract, fetchTokens } from "../main/utils";
 import { SetMerkleModal } from "../modals/SetMerkleModal";
+import { AddTokenModal } from "../modals/AddTokenModal";
 import { SetOwnerModal } from "../modals/SetOwnerModal";
 import { SetSettlerModal } from "../modals/SetSettlerModal";
 import { SetVerifierImgCommitModal } from "../modals/SetVerifierImgCommitModal";
-import { useAppSelector } from "../app/hooks";
-import { selectChains } from "../data/contractSlice";
+import { SetVerifierModal } from "../modals/SetVerifierModal";
+import { useAppSelector, useAppDispatch } from "../app/hooks";
+import { addProxyAddress, selectChains } from "../data/contractSlice";
+import { AddTXModal } from "../modals/AddTXModal";
+import { selectProxyAddressHistory } from "../data/contractSlice";
+import BN from "bn.js";
+import proxyArtifact from "zkWasm-protocol/artifacts/contracts/Proxy.sol/Proxy.json";
+
+const initialRoot = new Uint8Array([166, 157, 178, 62, 35, 83, 140, 56, 9, 235, 134, 184, 20, 145, 63, 43, 245, 186, 75, 233, 43, 42, 187, 217, 104, 152, 219, 89, 125, 199, 161, 9]);
+const providerUrl = process.env["REACT_APP_PROVIDER_URL"];
 
 export function QueryExistingProxy({
   signer,
-  proxyAddress,
-  withdrawAddress,
-  verifierAddress,
-  setActiveTab,
   addLog
 }: QueryExistingProxyProps) {
-  const [manualProxyAddress, setManualProxyAddress] = useState(""); // Proxy address now user-inputted
-  const [useManualProxyInput, setuseManualProxyInput] = useState(false); // Switch for manual/Auto Proxy Mode
-  const [manualVerifierAddress, setManualVerifierAddress] = useState(""); // Verifier address now user-inputted
-  const [useManualVerifierInput, setUseManualVerifierInput] = useState(false); // Switch for manual/Auto Verifier Mode
-  const [manualWithdrawAddress, setManualWithdrawAddress] = useState(""); // Withdraw address now user-inputted
-  const [useManualWithdrawInput, setUseManualWithdrawInput] = useState(false); // Switch for manual/Auto Withdraw Mode
-
   const [proxyContent, setProxyContent] = useState<ProxyContent | null>(null); // Store query results
   const [isLoading, setIsLoading] = useState(false);
   const [showWithdrawLimitModal, setShowWithdrawLimitModal] = useState(false);
   const [showTokenListModal, setShowTokenListModal] = useState(false);
+  const [showAddTokenModal, setShowAddTokenModal] = useState(false);
   const [showSetMerkleModal, setShowSetMerkleModal] = useState(false);
   const [showSetOwnerModal, setShowSetOwnerModal] = useState(false);
   const [showSetSettlerModal, setShowSetSettlerModal] = useState(false);
   const [showSetVerifierImgCommitModal, setShowSetVerifierImgCommitModal] = useState(false);
-  const [currentProxy, setCurrentProxyContract] = useState<ethers.Contract | null>(null);
+  const [showSetVerifierModal, setShowSetVerifierModal] = useState(false);
+  const [showAddTXModal, setShowAddTXModal] = useState(false);
+  const [currentProxy, setCurrentProxy] = useState<ethers.Contract | null>(null);
   const [tokenList, setTokenList] = useState<string[]>([]);
-  const [isSettingVerifier, setIsSettingVerifier] = useState(false);
-  const [isAddingTX, setIsAddingTX] = useState(false);
+  const [proxyAddress, setProxyAddress] = useState('');
+  const [mode, setMode] = useState<"history" | "deploy">("history");
+  const [deployedProxyAddress, setDeployedProxyAddress] = useState('');
+  const [isDeploying, setIsDeploying] = useState(false);
   const chainsState = useAppSelector(selectChains);
+  const proxyAddressHistory = useAppSelector(selectProxyAddressHistory);
+  const dispatch = useAppDispatch();
 
-  const handleAddTX = async () => {
-    try {
-      // Resolve Withdraw address based on mode
-      const resolvedWithdrawAddress = useManualWithdrawInput ? manualWithdrawAddress.trim(): withdrawAddress;
-      if (!resolvedWithdrawAddress) throw new Error("Withdraw address is missing");
-
-      setIsAddingTX(true);
-
-      // Validate Withdraw address
-      validateHexString(resolvedWithdrawAddress, 40);
-      const formattedWihdrawAddress = formatAddress(resolvedWithdrawAddress);
-      const validWithdrawAddress = ethers.getAddress(formattedWihdrawAddress);
-      addLog("contractAddr", "Valid Withdraw address: " + validWithdrawAddress);
-
-      // Excute Proxy contract's addTransaction
-      const tx = await currentProxy!.addTransaction(validWithdrawAddress, true);
-      addLog("info", "Transaction sent")
-      addLog("txhash", tx.hash, proxyContent!.chain_id.toString());
-
-      // Wait the transaction confirmed
-      const receipt = await tx.wait();
-      addLog("info", "Transaction confirmed. Gas used: " + receipt.gasUsed.toString());
-      const statusRes = receipt.status === 1 ? "Success" : "Failure";
-      addLog("info", "Status: " + statusRes);
-
-      // Qeury transaction address
-      const address = await currentProxy!._get_transaction(0n); //opcode of withdraw is 0x0
-      addLog("contractAddr", "Current transaction address: " + address);
-
-      addLog("success", "Transaction added successfully!");
-      queryProxyInfo();
-      setIsAddingTX(false);
-    } catch (error) {
-      const err = formatErrorMessage(error);
-      addLog("error", `Error adding transaction: ${err}`);
-    } finally {
-      setIsAddingTX(false);
+  // Use useMemo to make sure provider is created once
+  const provider = useMemo(() => {
+    // Use BrowserProvider to get browser wallet's signer
+    if (window.ethereum) {
+      return new BrowserProvider(window.ethereum, "any");
+    } else {
+      return new ethers.JsonRpcProvider(providerUrl);
     }
-  }
+  }, []);
 
-  const handleSetVerifier = async () => {
-    try {
-      // Resolve Verifier address based on mode
-      const resolvedVerifierAddress = useManualVerifierInput ? manualVerifierAddress.trim() : verifierAddress;
-      if (!resolvedVerifierAddress) throw new Error("Verifier address is missing");
+  const DeployProxy = ({
+    onDeploySuccess
+  }: { onDeploySuccess: (address: string) => void }) => {
+    const handleDeploy = async () => {
+      try {
+        if (!signer) {
+          throw new Error("Please connect your wallet before submitting any requests!");
+        }
+        setIsDeploying(true);
 
-      setIsSettingVerifier(true);
+        // Prepare params for Proxy contract
+        const { chainId } = await provider.getNetwork();
+        const chainName = await fetchChainName(chainsState.chains, chainId);
+        addLog("info", `chainId:, ${chainId}(chain name: ${chainName})`, `${chainId}`);
+        const rootBn = new BN(initialRoot, 16, "be");
+        const rootBigInt = BigInt("0x" + rootBn.toString(16));
 
-      // Validate Verifier address
-      validateHexString(resolvedVerifierAddress, 40);
-      const formattedVerifierAddress = formatAddress(resolvedVerifierAddress);
-      const validVerifierAddress = ethers.getAddress(formattedVerifierAddress);
-      addLog("contractAddr", "Valid Verifier address: " + validVerifierAddress);
+        addLog("info", `Starting deployment of Proxy contract. Plesae wait...`, `${chainId}`);
+        const contractAddress = await deployContract(
+          "Proxy",
+          proxyArtifact,
+          [chainId, rootBigInt],
+          chainId.toString(),
+          addLog,
+          signer
+        );
+        setDeployedProxyAddress(contractAddress);
+        onDeploySuccess(contractAddress);
+        dispatch(addProxyAddress(contractAddress));
+        setIsDeploying(false);
+        setProxyContent(null);
+        addLog("info", `Click the "Query Existing Proxy" button to continue.`, `${chainId}`);
+      } catch (error: any) {
+        const err = formatErrorMessage(error);
+        addLog("error", `Error deploying contracts: ${err}.`, "");
+      } finally {
+        setIsDeploying(false);
+      }
+    };
 
-      const tx = await currentProxy!.setVerifier(validVerifierAddress);
-      addLog("info", "Transaction sent")
-      addLog("txhash", tx.hash, proxyContent!.chain_id.toString());
-
-      // Wait the transaction confirmed
-      const receipt = await tx.wait();
-      addLog("info", "Transaction confirmed. Gas used: " + receipt.gasUsed.toString());
-      const statusRes = receipt.status === 1 ? "Success" : "Failure";
-      addLog("info", "Status: " + statusRes);
-
-      // Qeury verifier address
-      const address = await currentProxy!.verifier();
-      addLog("contractAddr", "Current Verifier address: " + address);
-
-      addLog("success", "Verifier set successfully!");
-      queryProxyInfo();
-      setIsSettingVerifier(false);
-    } catch (error) {
-      const err = formatErrorMessage(error);
-      addLog("error", `Error setting verifier: ${err}`);
-    } finally {
-      setIsSettingVerifier(false);
-    }
-  }
+    return (
+      <div>
+        <Button variant="primary" onClick={handleDeploy} disabled={isDeploying}>
+          {isDeploying ? <Spinner animation="border" size="sm" /> : 'Deploy Proxy Contract'}
+        </Button>
+      </div>
+    );
+  };
 
   const queryProxyInfo = async () => {
     try {
@@ -131,15 +114,11 @@ export function QueryExistingProxy({
         throw new Error("Please connect your wallet before submitting any requests!");
       }
 
-      // Resolve Proxy address based on mode
-      const resolvedProxyAddress = useManualProxyInput ? manualProxyAddress.trim() : proxyAddress;
-      if (!resolvedProxyAddress) throw new Error("Proxy address is missing");
-
       setIsLoading(true);
 
       // Validate Proxy address
-      validateHexString(resolvedProxyAddress, 40);
-      const formattedProxyAddress = formatAddress(resolvedProxyAddress);
+      validateHexString(proxyAddress, 40);
+      const formattedProxyAddress = formatAddress(proxyAddress);
       const validProxyAddress = ethers.getAddress(formattedProxyAddress);
       addLog("contractAddr", "Valid Proxy address: " + validProxyAddress);
 
@@ -150,7 +129,6 @@ export function QueryExistingProxy({
         // if throw error, maybe the address is not belong to Proxy
         throw new Error("The address may not belong to a Proxy contract");
       });
-
       const chainName = await fetchChainName(chainsState.chains, proxyInfo.chain_id);
       const withdrawLimit = await proxyContract.withdrawLimit();
       const etherWithdrawLimit = ethers.formatEther(withdrawLimit);
@@ -164,7 +142,6 @@ export function QueryExistingProxy({
           transactions.push(transaction.toString(16));
           i++;
         } catch (error) {
-          console.log("End of transactions array");
           break;
         }
       }
@@ -181,21 +158,21 @@ export function QueryExistingProxy({
       const settler = await proxyContract.getSettler();
 
       setProxyContent({
+        proxyAddress: validProxyAddress,
         chainName,
         withdrawLimit: etherWithdrawLimit,
         transactions,
-        settler: BigInt(settler),
+        settler: settler,
         zk_image_commitments: zkImageCommitmentsStr,
         chain_id: proxyInfo.chain_id,
         amount_token: proxyInfo.amount_token,
-        amount_pool: proxyInfo.amount_pool,
         owner: proxyInfo.owner,
         merkle_root: proxyInfo.merkle_root,
         rid: proxyInfo.rid,
         verifier: proxyInfo.verifier,
       });
 
-      setCurrentProxyContract(proxyContract);
+      setCurrentProxy(proxyContract);
       fetchTokens(proxyContract, addLog).then((tokens) => {
         setTokenList(tokens);
       });
@@ -211,292 +188,310 @@ export function QueryExistingProxy({
 
   return (
     <div>
-      <p>Use the toggle switch to switch between:</p>
-      <ul>
-        <li><strong>Manual Mode</strong>: Enter the existing contract address manually.</li>
-        <li>
-          <strong>Auto Mode</strong>: Use the contract address generated during the deployment
-          process in the <span className="startTip" onClick={() => setActiveTab("start")}>Start from Scratch</span> panel.
-        </li>
-      </ul>
-
-      {/* Mode switch */}
-      <InputGroup>
-        <Form.Check
-          type="switch"
-          id="manual-auto-switch"
-          label={useManualProxyInput ? "Manual Proxy Mode 🔧" : "Auto Proxy Mode 🚀"}
-          checked={useManualProxyInput}
-          onChange={() => setuseManualProxyInput(!useManualProxyInput)}
-          style={{ cursor: "pointer", fontWeight: "bold", color: "#007bff" }}
-          title="Click to toggle between Manual and Auto modes"
-        />
-      </InputGroup>
-      <FaHandPointer
-        className="pointer-icon"
-        title="Click to toggle between Manual and Auto modes"
-      />
-
-      {/* Input field for manual Proxy address */}
-      <InputGroup className="mb-3">
-        <InputGroup.Text>Proxy Address</InputGroup.Text>
-        <Form.Control
-          type="text"
-          placeholder="Enter a valid 40-character Proxy address (e.g., 0x12...)"
-          value={useManualProxyInput ? manualProxyAddress : proxyAddress || "No deployed Proxy address available. Go to 'Start from Scratch' panel to deploy Proxy contract."}
-          onChange={(e) => setManualProxyAddress(e.target.value)}
-          disabled={!useManualProxyInput}
-          required
-        />
-      </InputGroup>
-
-      {/* Withdraw Mode switch */}
-      <InputGroup>
-        <Form.Check
-          type="switch"
-          id="manual-withdraw-switch"
-          label={useManualWithdrawInput ? "Manual Withdraw Mode 🔧" : "Auto Withdraw Mode 🚀"}
-          checked={useManualWithdrawInput}
-          onChange={() => setUseManualWithdrawInput(!useManualWithdrawInput)}
-          style={{ cursor: "pointer", fontWeight: "bold", color: "#007bff" }}
-          title="Click to toggle between Manual and Auto modes"
-        />
-      </InputGroup>
-      <FaHandPointer
-        className="pointer-icon"
-        title="Click to toggle between Manual and Auto modes"
-      />
-
-      {/* Input field for manual Withdraw address */}
-      <InputGroup className="mb-3">
-        <InputGroup.Text>Withdraw Address</InputGroup.Text>
-        <Form.Control
-          type="text"
-          placeholder="Enter a valid 40-character Withdraw address (e.g., 0x12...)"
-          value={useManualWithdrawInput ? manualWithdrawAddress : withdrawAddress || "No deployed Withdraw address available. Go to 'Start from Scratch' panel to deploy Withdraw contract."}
-          onChange={(e) => setManualWithdrawAddress(e.target.value)}
-          disabled={!useManualWithdrawInput}
-          required
-        />
-      </InputGroup>
-
-      {/* Mode switch */}
-      <InputGroup>
-        <Form.Check
-          type="switch"
-          id="manual-verifier-switch"
-          label={useManualVerifierInput ? "Manual Verifier Mode 🔧" : "Auto Verifier Mode 🚀"}
-          checked={useManualVerifierInput}
-          onChange={() => setUseManualVerifierInput(!useManualVerifierInput)}
-          style={{ cursor: "pointer", fontWeight: "bold", color: "#007bff" }}
-          title="Click to toggle between Manual and Auto modes"
-        />
-      </InputGroup>
-      <FaHandPointer
-        className="pointer-icon"
-        title="Click to toggle between Manual and Auto modes"
-      />
-
-      {/* Input field for manual Verifier address */}
-      <InputGroup className="mb-3">
-        <InputGroup.Text>Verifier Address</InputGroup.Text>
-        <Form.Control
-          type="text"
-          placeholder="Enter a valid 40-character Verifier address (e.g., 0x12...)"
-          value={useManualVerifierInput ? manualVerifierAddress : verifierAddress || "No deployed Verifier address available. Go to 'Start from Scratch' panel to deploy Verifier contract."}
-          onChange={(e) => setManualVerifierAddress(e.target.value)}
-          disabled={!useManualVerifierInput}
-          required
-        />
-      </InputGroup>
-
-      {/* Query Button */}
-      <Button variant="primary" onClick={queryProxyInfo} disabled={isLoading}>
-        {isLoading ? <Spinner animation="border" size="sm" /> : "QUERY EXISTING PROXY"}
-      </Button>
-
-      {/* Proxy Content Table */}
-      {proxyContent && (
-      <>
-        <Table striped bordered hover className="mt-3 proxyContentTable">
-          <thead>
-            <tr>
-              <th>Field</th>
-              <th className="tableValue">Value</th>
-              <th className="tableAct">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Chain ID</td>
-              <td className="tableValue">{proxyContent.chain_id.toString()}</td>
-              <td className="tableAct"><span style={{ color: "#ccc" }}>N/A</span></td>
-            </tr>
-            <tr>
-              <td>Chain Name</td>
-              <td className="tableValue">{proxyContent.chainName}</td>
-              <td className="tableAct"><span style={{ color: "#ccc" }}>N/A</span></td>
-            </tr>
-            <tr>
-              <td>Rid(This shows how many times the contract has been settled)</td>
-              <td className="tableValue">{proxyContent.rid.toString()}</td>
-              <td className="tableAct"><span style={{ color: "#ccc" }}>N/A</span></td>
-            </tr>
-            <tr>
-              <td>Token Amount</td>
-              <td className="tableValue">
-                { proxyContent.amount_token.toString() !== "0" ? proxyContent.amount_token.toString() : "No Tokens Available"}
-              </td>
-              <td className="tableAct"><span style={{ color: "#ccc" }}>N/A</span></td>
-            </tr>
-            <tr>
-              <td>Pool Amount</td>
-              <td className="tableValue">
-                { proxyContent.amount_pool.toString() !== "0" ? proxyContent.amount_pool.toString() : "No Pools Available"}
-              </td>
-              <td className="tableAct"><span style={{ color: "#ccc" }}>N/A</span></td>
-            </tr>
-            <tr>
-              <td>Token List</td>
-              <td className="tableValue">
-                {tokenList.length > 0 ? `${tokenList.length} Tokens Available` : "No Tokens Available"}
-              </td>
-              <td className="tableAct">
-                <Button variant="primary" size="sm" className="me-2" onClick={() => setShowTokenListModal(true)}>
-                  View Tokens
-                </Button>
-              </td>
-            </tr>
-            <tr>
-              <td>Transactions</td>
-              <td className="tableValue">
-                {proxyContent.transactions.length !== 0 ? proxyContent.transactions : "No Transactions Available"}
-              </td>
-              <td className="tableAct">
-                <Button variant="primary" size="sm" onClick={handleAddTX} disabled={isAddingTX || proxyContent.transactions.length !== 0}>
-                  {isAddingTX ? <Spinner animation="border" size="sm" /> : "Add TX"}
-                </Button>
-              </td>
-            </tr>
-            <tr>
-              <td>Withdraw Limit</td>
-              <td className="tableValue">{proxyContent.withdrawLimit} ETH</td>
-              <td className="tableAct">
-                <Button variant="primary" size="sm" onClick={() => setShowWithdrawLimitModal(true)}>
-                  Set Limit
-                </Button>
-              </td>
-            </tr>
-            <tr>
-              <td>Owner</td>
-              <td className="tableValue">{proxyContent.owner.toString(16)}</td>
-              <td className="tableAct">
-                <Button variant="primary" size="sm"  onClick={() => setShowSetOwnerModal(true)}>Set Owner</Button>
-              </td>
-            </tr>
-            <tr>
-              <td>Merkle Root</td>
-              <td className="tableValue">0x{proxyContent.merkle_root.toString(16)}</td>
-              <td className="tableAct">
-                <Button variant="primary" size="sm" onClick={() => setShowSetMerkleModal(true)}>
-                  Set Root
-                </Button>
-              </td>
-            </tr>
-            <tr>
-              <td>Settler</td>
-              <td className="tableValue">
-                { proxyContent.settler !== 0n ? "0X" + proxyContent.settler.toString(16) : "No Settler Available"}
-              </td>
-              <td className="tableAct">
-                <Button variant="primary" size="sm"  onClick={() => setShowSetSettlerModal(true)}>
-                  Set Settler
-                </Button>
-              </td>
-            </tr>
-            <tr>
-              <td>Verifier Address</td>
-              <td className="tableValue">
-              { proxyContent.verifier.toString(16) !== "0" ? "0x" + proxyContent.verifier.toString(16) : "No Verifier Available"}
-              </td>
-              <td className="tableAct">
-                <Button variant="primary" size="sm"  onClick={handleSetVerifier} disabled={isSettingVerifier}>
-                  {isSettingVerifier ? <Spinner animation="border" size="sm" /> : "Set Verifier"}
-                </Button>
-              </td>
-            </tr>
-            <tr>
-              <td>Verifier Image Commitments</td>
-              <td className="tableValue">
-              {proxyContent.zk_image_commitments[0] !== "0" ? (
-                <ul>
-                  {proxyContent.zk_image_commitments.map((commitment, index) => {
-                    //if(commitment)
-                    return (
-                      <li key={index}>Commitment {index + 1}: {commitment}</li>
-                    )})
-                  }
-                </ul>
-              ) : (
-                "No Commitments Available"
+      {/* Step 1 */}
+      <div className="step">
+        <h5>Step 1: Select Proxy Address</h5>
+        <p>
+          A Proxy Address is a unique identifier that represents the smart contract Proxy deployed on the blockchain.
+          It allows users and applications to interact with the Proxy contract and perform various actions such as querying data or executing functions.
+        </p>
+        <p>
+          Select <strong>Use Existing Proxy Address</strong> and provide the address in the input field,
+          or select <strong>Deploy New Proxy Contract</strong> by clicking the
+          <strong> Deploy Proxy Contract</strong> button to deploy a new Proxy contract.
+        </p>
+        <Form className="mb-2">
+          <Form.Check
+            type="radio"
+            label="Use Existing Proxy Address"
+            name="txMode"
+            checked={mode === "history"}
+            onChange={() => setMode("history")}
+          />
+          <Form.Check
+            type="radio"
+            label="Deploy New Proxy Contract"
+            name="txMode"
+            checked={mode === "deploy"}
+            onChange={() => setMode("deploy")}
+            className="mb-2"
+          />
+          {mode === 'history' && (
+            <>
+              <InputGroup className="mb-1">
+                <InputGroup.Text>Proxy Address</InputGroup.Text>
+                <Form.Control
+                  as="input"
+                  list="proxy-history-options"
+                  placeholder="Enter or select a valid 40-character Proxy address (e.g., 0x12...)"
+                  value={proxyAddress}
+                  onChange={(e) => {
+                    setProxyAddress(e.target.value);
+                    setProxyContent(null);
+                  }}
+                  title="You can manually enter a 40-character Proxy address or select one from the dropdown options."
+                />
+                <datalist id="proxy-history-options">
+                  {proxyAddressHistory.map((address, index) => (
+                    <option key={index} value={address} />
+                  ))}
+                </datalist>
+              </InputGroup>
+              <Form.Text className="tip">
+                You can manually enter a 40-character Proxy address or select one from the dropdown options, which include contracts you deployed during this session of using the app.
+                This session refers to the time you have this UI open.
+              </Form.Text>
+            </>
+          )}
+          {mode === 'deploy' && (
+            <>
+              <DeployProxy onDeploySuccess={setProxyAddress} />
+              {deployedProxyAddress && (
+                <div className="mt-3">
+                  <Alert variant="success">
+                    <strong>Latest Deployed Proxy Address:</strong>
+                    <code>{deployedProxyAddress}</code>
+                  </Alert>
+                </div>
               )}
-              </td>
-              <td className="tableAct">
-                <Button variant="primary" size="sm"  onClick={() => setShowSetVerifierImgCommitModal(true)}>
-                  Set Commitments
-                </Button>
-              </td>
-            </tr>
-          </tbody>
-        </Table>
+            </>
+          )}
+        </Form>
+      </div>
 
-        <SetWithdrawLimitModal
-          show={showWithdrawLimitModal}
-          onClose={() => setShowWithdrawLimitModal(false)}
-          currentProxy={currentProxy!}
-          queryProxyInfo = {queryProxyInfo}
-          chainId={proxyContent!.chain_id.toString()}
-        />
-        <TokenListModal
-          show={showTokenListModal}
-          onClose={() => setShowTokenListModal(false)}
-          currentProxy={currentProxy!}
-          tokenList={tokenList}
-          proxyAddress={proxyAddress}
-          signer={signer}
-          queryProxyInfo = {queryProxyInfo}
-          chainId={proxyContent!.chain_id.toString()}
-        />
-        <SetMerkleModal
-          show={showSetMerkleModal}
-          onClose={() => setShowSetMerkleModal(false)}
-          currentProxy={currentProxy!}
-          queryProxyInfo = {queryProxyInfo}
-          chainId={proxyContent!.chain_id.toString()}
-        />
-        <SetOwnerModal
-          show={showSetOwnerModal}
-          onClose={() => setShowSetOwnerModal(false)}
-          currentProxy={currentProxy!}
-          queryProxyInfo = {queryProxyInfo}
-          chainId={proxyContent!.chain_id.toString()}
-        />
-        <SetSettlerModal
-          show={showSetSettlerModal}
-          onClose={() => setShowSetSettlerModal(false)}
-          currentProxy={currentProxy!}
-          queryProxyInfo = {queryProxyInfo}
-          chainId={proxyContent!.chain_id.toString()}
-        />
-        <SetVerifierImgCommitModal
-          show={showSetVerifierImgCommitModal}
-          onClose={() => setShowSetVerifierImgCommitModal(false)}
-          currentProxy={currentProxy!}
-          queryProxyInfo = {queryProxyInfo}
-          chainId={proxyContent!.chain_id.toString()}
-        />
-      </>
-      )}
+      {/* Step 2 */}
+      <div className="step mt-4">
+      <h5>Step 2: Query Proxy Info</h5>
+        <p>
+          Click the <strong>Query Existing Proxy</strong> button to fetch details of the selected or
+          deployed proxy.
+        </p>
+        <div title={!proxyAddress ? "Please select Proxy address in step 1" : ""}>
+          <Button variant="primary" onClick={queryProxyInfo} disabled={isLoading || !proxyAddress}>
+            {isLoading ? <Spinner animation="border" size="sm" /> : "Query Existing Proxy"}
+          </Button>
+          {!proxyAddress && <p className="mt-2">Please select Proxy address in step 1</p>}
+        </div>
+      </div>
+
+      {/* Step 3 */}
+      <div className="step mt-4">
+        <h5>Step 3: Perform Actions in Info Table</h5>
+        <p>
+          All subsequent actions can be performed directly in the <strong>Info Table</strong> based
+          on the query results.
+        </p>
+        {/* Info Table placeholder */}
+        {proxyContent ? (
+          <>
+            <h5>Proxy Info (Current Address: {proxyContent.proxyAddress || 'N/A'})</h5>
+            <Table striped bordered hover className="mt-3 proxyContentTable">
+              <thead>
+                <tr>
+                  <th>Field</th>
+                  <th className="tableValue">Value</th>
+                  <th className="tableAct">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="tableField">Chain ID</td>
+                  <td className="tableValue">{proxyContent.chain_id.toString()}</td>
+                  <td className="tableAct"><span style={{ color: "#ccc" }}>N/A</span></td>
+                </tr>
+                <tr>
+                  <td className="tableField">Chain Name</td>
+                  <td className="tableValue">{proxyContent.chainName}</td>
+                  <td className="tableAct"><span style={{ color: "#ccc" }}>N/A</span></td>
+                </tr>
+                <tr>
+                  <td className="tableField">Owner</td>
+                  <td className="tableValue">{proxyContent.owner.toString(16)}</td>
+                  <td className="tableAct">
+                    <Button variant="primary" size="sm" onClick={() => setShowSetOwnerModal(true)}>Set Owner</Button>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="tableField">Settler</td>
+                  <td className="tableValue">
+                    {Number(proxyContent.settler) !== 0 ? proxyContent.settler.toString() : "No Settler Available"}
+                  </td>
+                  <td className="tableAct">
+                    <Button variant="primary" size="sm" onClick={() => setShowSetSettlerModal(true)}>
+                      Set Settler
+                    </Button>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="tableField">Merkle Root</td>
+                  <td className="tableValue">0x{proxyContent.merkle_root.toString(16)}</td>
+                  <td className="tableAct">
+                    <Button variant="primary" size="sm" onClick={() => setShowSetMerkleModal(true)}>
+                      Set Root
+                    </Button>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="tableField">Verifier Address</td>
+                  <td className="tableValue">
+                    {Number(proxyContent.verifier) !== 0 ? "0x" + proxyContent.verifier.toString(16) : "No Verifier Available"}
+                  </td>
+                  <td className="tableAct">
+                    <Button variant="primary" size="sm" onClick={() => setShowSetVerifierModal(true)}>
+                      Set Verifier
+                    </Button>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="tableField">Rid(This shows how many times the contract has been settled)</td>
+                  <td className="tableValue">{proxyContent.rid.toString()}</td>
+                  <td className="tableAct"><span style={{ color: "#ccc" }}>N/A</span></td>
+                </tr>
+                <tr>
+                  <td className="tableField">Withdraw Limit</td>
+                  <td className="tableValue">{proxyContent.withdrawLimit} ETH</td>
+                  <td className="tableAct">
+                    <Button variant="primary" size="sm" onClick={() => setShowWithdrawLimitModal(true)}>
+                      Set Limit
+                    </Button>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="tableField">Verifier Image Commitments</td>
+                  <td className="tableValue">
+                    {proxyContent.zk_image_commitments[0] !== "0" ? (
+                      <ul>
+                        {proxyContent.zk_image_commitments.map((commitment, index) => {
+                          return (
+                            <li key={index}>Commitment {index + 1}: {commitment}</li>
+                          )
+                        })
+                        }
+                      </ul>
+                    ) : (
+                      "No Commitments Available"
+                    )}
+                  </td>
+                  <td className="tableAct">
+                    <Button variant="primary" size="sm" onClick={() => setShowSetVerifierImgCommitModal(true)}>
+                      Set Commitments
+                    </Button>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="tableField">Transactions</td>
+                  <td className="tableValue">
+                    {proxyContent.transactions.length !== 0 ? proxyContent.transactions : "No Transactions Available"}
+                  </td>
+                  <td className="tableAct">
+                    {proxyContent.transactions.length !== 0 ? (
+                      <div title="Add TX can only be executed once.">
+                        <Button variant="primary" size="sm" onClick={() => setShowAddTXModal(true)} disabled>
+                          Add TX
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button variant="primary" size="sm" onClick={() => setShowAddTXModal(true)} title="Add TX can only be executed once.">
+                        Add TX
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="tableField">Token Amount</td>
+                  <td className="tableValue">
+                    {proxyContent.amount_token.toString()}
+                  </td>
+                  <td className="tableAct"><span style={{ color: "#ccc" }}>N/A</span></td>
+                </tr>
+                <tr>
+                  <td className="tableField">Token List</td>
+                  <td className="tableValue">
+                    <TokenList
+                      show={showTokenListModal}
+                      onClose={() => setShowTokenListModal(false)}
+                      currentProxy={currentProxy!}
+                      tokenList={tokenList}
+                      proxyAddress={proxyAddress}
+                      signer={signer}
+                      queryProxyInfo={queryProxyInfo}
+                      chainId={proxyContent!.chain_id.toString()}
+                    />
+                  </td>
+                  <td className="tableAct">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="me-2"
+                      onClick={() => setShowAddTokenModal(true)}>
+                      Add Token
+                    </Button>
+                  </td>
+                </tr>
+              </tbody>
+            </Table>
+
+            <SetWithdrawLimitModal
+              show={showWithdrawLimitModal}
+              onClose={() => setShowWithdrawLimitModal(false)}
+              currentProxy={currentProxy!}
+              queryProxyInfo={queryProxyInfo}
+              chainId={proxyContent!.chain_id.toString()}
+            />
+            <SetMerkleModal
+              show={showSetMerkleModal}
+              onClose={() => setShowSetMerkleModal(false)}
+              currentProxy={currentProxy!}
+              queryProxyInfo={queryProxyInfo}
+              chainId={proxyContent!.chain_id.toString()}
+            />
+            <SetOwnerModal
+              show={showSetOwnerModal}
+              onClose={() => setShowSetOwnerModal(false)}
+              currentProxy={currentProxy!}
+              queryProxyInfo={queryProxyInfo}
+              chainId={proxyContent!.chain_id.toString()}
+            />
+            <SetSettlerModal
+              show={showSetSettlerModal}
+              onClose={() => setShowSetSettlerModal(false)}
+              currentProxy={currentProxy!}
+              queryProxyInfo={queryProxyInfo}
+              chainId={proxyContent!.chain_id.toString()}
+            />
+            <SetVerifierImgCommitModal
+              show={showSetVerifierImgCommitModal}
+              onClose={() => setShowSetVerifierImgCommitModal(false)}
+              currentProxy={currentProxy!}
+              queryProxyInfo={queryProxyInfo}
+              chainId={proxyContent!.chain_id.toString()}
+            />
+            <AddTokenModal
+              show={showAddTokenModal}
+              onClose={() => setShowAddTokenModal(false)}
+              currentProxy={currentProxy!}
+              queryProxyInfo={queryProxyInfo}
+              chainId={proxyContent!.chain_id.toString()}
+            />
+            <SetVerifierModal
+              show={showSetVerifierModal}
+              onClose={() => setShowSetVerifierModal(false)}
+              currentProxy={currentProxy!}
+              queryProxyInfo={queryProxyInfo}
+              chainId={proxyContent!.chain_id.toString()}
+              signer={signer}
+            />
+            <AddTXModal
+              show={showAddTXModal}
+              onClose={() => setShowAddTXModal(false)}
+              currentProxy={currentProxy!}
+              queryProxyInfo={queryProxyInfo}
+              chainId={proxyContent!.chain_id.toString()}
+              signer={signer}
+            />
+          </>
+        ) : <div>Click "Query Existing Proxy" in step 2 to fetch data for the new Proxy address</div>}
+      </div>
     </div>
   );
 }

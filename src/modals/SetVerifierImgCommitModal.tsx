@@ -33,7 +33,7 @@ export const SetVerifierImgCommitModal: React.FC<SetVerifierImgCommitModalProps>
       ) {
         throw new Error("Commitment cannot be 0");
       }
-      
+
       setIsSettingCommit(true);
       setErrorMessage("");
 
@@ -49,6 +49,7 @@ export const SetVerifierImgCommitModal: React.FC<SetVerifierImgCommitModalProps>
         BigInt("0x" + removeHexPrefix(cleanedCommitment2)),
         BigInt("0x" + removeHexPrefix(cleanedCommitment3)),
       ];
+      addLog("info", `Please sign the transaction in your wallet. This signature is required to authorize the execution of the contract function.`);
       const tx = await currentProxy.setVerifierImageCommitments(commitments);
       addLog("info", "Transaction sent");
       addLog("txhash", tx.hash, chainId);
@@ -57,7 +58,7 @@ export const SetVerifierImgCommitModal: React.FC<SetVerifierImgCommitModalProps>
       const receipt = await tx.wait();
       addLog("info", "Transaction confirmed. Gas used: " + receipt.gasUsed.toString());
       const statusRes = receipt.status === 1 ? "Success" : "Failure";
-      addLog("info", "Status: " + statusRes);
+      addLog("info", "Transaction Receipt Status: " + statusRes);
 
       // Qeury zk_image_commitments
       const commitments1 = await currentProxy.zk_image_commitments(0);
@@ -66,7 +67,11 @@ export const SetVerifierImgCommitModal: React.FC<SetVerifierImgCommitModalProps>
       addLog("info", `Current zk_image_commitments: [${commitments1}, ${commitments2}, ${commitments3}]`);
 
       addLog("success", "Commitments set successfully!");
+      addLog("info", "Start updating latest Proxy info...");
       await queryProxyInfo();
+      setCommitment1("");
+      setCommitment2("");
+      setCommitment3("");
       setIsSettingCommit(false);
       onClose();
     } catch (error) {
@@ -87,7 +92,7 @@ export const SetVerifierImgCommitModal: React.FC<SetVerifierImgCommitModalProps>
   }
 
   return (
-    <Modal show={show} onHide={closeModal}>
+    <Modal show={show} backdrop="static" onHide={closeModal}>
       <Modal.Header closeButton>
         <Modal.Title>Set Verifier Image Commitments</Modal.Title>
       </Modal.Header>

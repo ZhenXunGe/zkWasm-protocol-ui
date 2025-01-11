@@ -3,11 +3,11 @@ export interface Token {
 }
 
 export interface ProxyContent {
+  proxyAddress: string;
   chainName: string;
   withdrawLimit: string;
   chain_id: bigint;
   amount_token: bigint;
-  amount_pool: bigint;
   owner: bigint;
   merkle_root: bigint;
   rid: bigint;

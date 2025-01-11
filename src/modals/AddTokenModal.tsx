@@ -41,6 +41,7 @@ export const AddTokenModal: React.FC<AddTokenProps> = ({
         throw new Error("Token is not a local ERC token");
       }
 
+      addLog("info", `Please sign the transaction in your wallet. This signature is required to authorize the execution of the contract function.`);
       const tx = await currentProxy.addToken(l1token);
       addLog("info", "Transaction sent")
       addLog("txhash", tx.hash, chainId);
@@ -49,11 +50,13 @@ export const AddTokenModal: React.FC<AddTokenProps> = ({
       const receipt = await tx.wait();
       addLog("info", "ransaction confirmed. Gas used: " + receipt.gasUsed.toString());
       const statusRes = receipt.status === 1 ? "Success" : "Failure";
-      addLog("info", "Status: " + statusRes);
+      addLog("info", "Transaction Receipt Status: " + statusRes);
 
       addLog("success", "Token added successfully!");
+      addLog("info", "Start updating latest Proxy info...");
       await queryProxyInfo();
       setIsAddingToken(false);
+      setTokenAddress('');
       onClose();
     } catch (error) {
       const err = formatErrorMessage(error);

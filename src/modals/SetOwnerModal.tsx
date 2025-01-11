@@ -37,6 +37,7 @@ export const SetOwnerModal: React.FC<SetOwnerModalProps> = ({
       const infoBeforeSet = await currentProxy.getProxyInfo();
       addLog("contractAddr", "Owner address before set: " + infoBeforeSet.owner);
 
+      addLog("info", `Please sign the transaction in your wallet. This signature is required to authorize the execution of the contract function.`);
       const tx = await currentProxy.setOwner(newOwner);
       addLog("info", "Transaction sent");
       addLog("txhash", tx.hash, chainId);
@@ -45,14 +46,16 @@ export const SetOwnerModal: React.FC<SetOwnerModalProps> = ({
       const receipt = await tx.wait();
       addLog("info", "Transaction confirmed. Gas used: " + receipt.gasUsed.toString());
       const statusRes = receipt.status === 1 ? "Success" : "Failure";
-      addLog("info", "Status: " + statusRes);
+      addLog("info", "Transaction Receipt Status: " + statusRes);
 
       // Query current owner
       const infoAfterSet = await currentProxy.getProxyInfo();
       addLog("contractAddr", "Owner address after set: " + infoAfterSet.owner);
 
       addLog("success", "Owner changed successfully!");
+      addLog("info", "Start updating latest Proxy info...");
       await queryProxyInfo();
+      setNewOwner("");
       setIsSettingNewOwner(false);
       onClose();
     } catch (error) {
@@ -71,7 +74,7 @@ export const SetOwnerModal: React.FC<SetOwnerModalProps> = ({
   }
 
   return (
-    <Modal show={show} onHide={closeModal}>
+    <Modal show={show} backdrop="static" onHide={closeModal}>
       <Modal.Header closeButton>
         <Modal.Title>Set Owner Address</Modal.Title>
       </Modal.Header>

@@ -35,7 +35,6 @@ export const TopUpModal: React.FC<TopUpProps> = ({
   currentProxy,
   proxyAddress,
   signer,
-  queryProxyInfo,
   chainId,
   tokenIndex
 }) => {
@@ -49,10 +48,6 @@ export const TopUpModal: React.FC<TopUpProps> = ({
   const onConfirm = async () => {
     try {
       setErrorMessage("");
-      if (!signer) {
-        throw new Error("Please connect your wallet before submitting any requests!");
-      }
-
       if (!amount || !pid1 || !pid2) {
         throw new Error("Token amount, pid1 or pid2 is missing");
       }
@@ -63,7 +58,7 @@ export const TopUpModal: React.FC<TopUpProps> = ({
       // Make sue pid1 and pid2 is in the scope of uint64
       validateHexString(pid1.trim(), 16);
       validateHexString(pid2.trim(), 16);
-      
+
       setIsTopUp(true);
 
       // If parameters start with "0x", remove "0x"
@@ -82,8 +77,9 @@ export const TopUpModal: React.FC<TopUpProps> = ({
 
       // Query the balance of the contract
       const balanceBeforeTopup = await tokenContract.balanceOf(proxyAddress);
-      addLog("info", "The balance of the Proxy contract before topup is: " + balanceBeforeTopup);
+      addLog("info", "The token balance of the Proxy contract before topup is: " + balanceBeforeTopup);
 
+      addLog("info", `Please sign the transaction in your wallet. This signature is required to approve the token for further transactions.`);
       const tx = await tokenContract.approve(proxyAddress, amountWei);
       addLog("info", "Approve Transaction sent");
       addLog("txhash", tx.hash, chainId);
@@ -92,8 +88,9 @@ export const TopUpModal: React.FC<TopUpProps> = ({
       const approveReceipt = await tx.wait();
       addLog("info", "Approve Transaction confirmed. Approve Gas used: " + approveReceipt.gasUsed.toString());
       const approveRes = approveReceipt.status === 1 ? "Success" : "Failure";
-      addLog("info", "Approve Status: " + approveRes);
+      addLog("info", "Approve Transaction Receipt Status: " + approveRes);
 
+      addLog("info", `Please sign the transaction in your wallet. This signature is required to authorize the execution of the contract function.`);
       const result = await currentProxy.topup(
         BigInt("0x" + tokenIndex),
         BigInt("0x" + pid1NoPrefix),
@@ -107,7 +104,7 @@ export const TopUpModal: React.FC<TopUpProps> = ({
       const receipt = await result.wait();
       addLog("info", "Topup Transaction confirmed. Topup Gas used: " + receipt.gasUsed.toString());
       const topupRes = receipt.status === 1 ? "Success" : "Failure";
-      addLog("info", "Topup Status: " + topupRes);
+      addLog("info", "Topup Transaction Receipt Status: " + topupRes);
 
       // Query Events
       const filter = currentProxy.filters.TopUp();
@@ -136,11 +133,13 @@ export const TopUpModal: React.FC<TopUpProps> = ({
 
       // Query the balance of the contract
       const balanceAfterTopup = await tokenContract.balanceOf(proxyAddress);
-      addLog("info", "The balance of the Proxy contract after topup is: " + balanceAfterTopup);
+      addLog("info", "The token balance of the Proxy contract after topup is: " + balanceAfterTopup);
 
       addLog("success", "Topup executed successfully!");
-      await queryProxyInfo();
       setIsTopUp(false);
+      setPid1("");
+      setPid2("");
+      setAmount("");
       onClose();
     } catch (error) {
       const err = formatErrorMessage(error);
@@ -160,7 +159,7 @@ export const TopUpModal: React.FC<TopUpProps> = ({
   }
 
   return (
-    <Modal show={show} onHide={closeModal} backdrop={"static"} style={{ zIndex: 1051 }}>
+    <Modal show={show} onHide={closeModal} backdrop="static" style={{ zIndex: 1051 }}>
       <Modal.Header closeButton>
         <Modal.Title>Topup Your Ethereum Wallet</Modal.Title>
       </Modal.Header>

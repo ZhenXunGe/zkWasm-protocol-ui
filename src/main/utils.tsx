@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { Token } from "./types";
 import { LogType } from './types';
+import { Action } from '@reduxjs/toolkit';
 
 export function removeHexPrefix(value: string): string {
   return value.startsWith("0x") ? value.slice(2) : value;
@@ -85,4 +86,33 @@ export const getExplorerUrl = (chains: any[], chainId: bigint) => {
 export const getTXUrl = (chainsState: any[], chainId: bigint, transactionHash: string) => {
   const explorerBase = getExplorerUrl(chainsState, chainId);
   return explorerBase ? `${explorerBase}/tx/${transactionHash}` : null;
+}
+
+export async function deployContract(
+  name: string,
+  artifact: any,
+  params: bigint[],
+  chainId: string,
+  addLog: (type: LogType, message: string, chainId?: string) => void,
+  signer: ethers.JsonRpcSigner | null
+) {
+  // Get abi and bytecode
+  const abi = artifact.abi;
+  const bytecode = artifact.bytecode;
+
+  // Create a ContractFactory instance
+  const factory = new ethers.ContractFactory(abi, bytecode, signer);
+
+  // Deploy contract
+  addLog("info", `Please sign the transaction in your wallet. This signature is required to authorize the deployment of the contract.`);
+  const contract = await factory.deploy(...params);
+  addLog("info", `Transaction sent for ${name}`);
+  addLog("txhash", `${contract.deploymentTransaction()!.hash}`, chainId);
+  await contract.waitForDeployment();
+
+  // Get contract address
+  const contractAddress = await contract.getAddress();
+  addLog("success", `${name} deployed successfully.`);
+  addLog("contractAddr", `The ${name} contract address is ${contractAddress}`);
+  return contractAddress;
 }

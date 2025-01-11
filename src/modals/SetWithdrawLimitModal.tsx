@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { Alert, Modal, Button, InputGroup, Form, Spinner } from "react-bootstrap";
-import { removeHexPrefix } from "../main/utils";
+import { formatErrorMessage, removeHexPrefix } from "../main/utils";
 import { useLogger } from '../main/logger/LoggerContext';
-import { formatErrorMessage } from "../main/utils";
 import { SetWithdrawLimitProps } from "../main/props";
 
 export const SetWithdrawLimitModal: React.FC<SetWithdrawLimitProps> = ({
@@ -39,6 +38,7 @@ export const SetWithdrawLimitModal: React.FC<SetWithdrawLimitProps> = ({
       const weiMultiplier = BigInt("1000000000000000000");
       const withdrawLimitBigInt = BigInt("0x" + withdrawLimitNoPrefix) * weiMultiplier;
 
+      addLog("info", `Please sign the transaction in your wallet. This signature is required to authorize the execution of the contract function.`);
       const tx = await currentProxy.setWithdrawLimit(withdrawLimitBigInt);
       addLog("info", "Transaction sent");
       addLog("txhash", tx.hash, chainId);
@@ -47,14 +47,16 @@ export const SetWithdrawLimitModal: React.FC<SetWithdrawLimitProps> = ({
       const receipt = await tx.wait();
       addLog("info", "Transaction confirmed. Gas used: " + receipt.gasUsed.toString());
       const statusRes = receipt.status === 1 ? "Success" : "Failure";
-      addLog("info", "Status: " + statusRes);
+      addLog("info", "Transaction Receipt Status: " + statusRes);
 
       // Query current withdrawLimit
       const amountAfterSet = await currentProxy.withdrawLimit();
       addLog("info", "withdrawLimit after set withdrawLimit: : " + amountAfterSet);
 
       addLog("success", "withdrawLimit changed successfully!");
+      addLog("info", "Start updating latest Proxy info...");
       await queryProxyInfo();
+      setWithdrawLimit("");
       setIsSettingLimit(false);
       onClose();
     } catch (error) {
@@ -73,7 +75,7 @@ export const SetWithdrawLimitModal: React.FC<SetWithdrawLimitProps> = ({
   }
 
   return (
-    <Modal show={show} onHide={closeModal}>
+    <Modal show={show} backdrop="static" onHide={closeModal}>
       <Modal.Header closeButton>
         <Modal.Title>Set Withdraw Limit</Modal.Title>
       </Modal.Header>

@@ -39,6 +39,7 @@ export const SetMerkleModal: React.FC<SetMerkleModalProps> = ({
       // Convert hex string to BigInt
       const rootBigInt = BigInt("0x" + rootNoPrefix);
 
+      addLog("info", `Please sign the transaction in your wallet. This signature is required to authorize the execution of the contract function.`);
       const tx = await currentProxy.setMerkle(rootBigInt);
       addLog("info", "Transaction sent.");
       addLog("txhash", tx.hash, chainId);
@@ -47,14 +48,16 @@ export const SetMerkleModal: React.FC<SetMerkleModalProps> = ({
       const receipt = await tx.wait();
       addLog("info", "Transaction confirmed. Gas used: " + receipt.gasUsed.toString());
       const statusRes = receipt.status === 1 ? "Success" : "Failure";
-      addLog("info", "Status: " + statusRes);
+      addLog("info", "Transaction Receipt Status: " + statusRes);
 
       // Query current merkle root
       const proxyInfo = await currentProxy.getProxyInfo();
       addLog("info", "merkle root after set merkle: 0x" + proxyInfo.merkle_root.toString(16));
 
       addLog("success", "Root changed successfully!");
+      addLog("info", "Start updating latest Proxy info...");
       await queryProxyInfo();
+      setNewRoot("");
       setIsSettingMerkle(false);
       onClose();
     } catch (error) {
@@ -73,7 +76,7 @@ export const SetMerkleModal: React.FC<SetMerkleModalProps> = ({
   }
 
   return (
-    <Modal show={show} onHide={closeModal}>
+    <Modal show={show} backdrop="static" onHide={closeModal}>
       <Modal.Header closeButton>
         <Modal.Title>Set Merkle Root</Modal.Title>
       </Modal.Header>

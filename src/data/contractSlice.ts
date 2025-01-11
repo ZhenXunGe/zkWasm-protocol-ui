@@ -9,15 +9,17 @@ export interface ChainsState {
 
 interface State {
   proxyAddress: string | null;
-  withdrawAddress: string | null;
-  dummyVerifierAddress: string | null;
+  withdrawAddressHistory: string[];
+  dmVerifierAddressHistory: string[];
+  proxyAddressHistory: string[];
   chains: ChainsState;
 }
 
 const initialState: State = {
   proxyAddress: null,
-  withdrawAddress: null,
-  dummyVerifierAddress: null,
+  withdrawAddressHistory: [],
+  dmVerifierAddressHistory: [],
+  proxyAddressHistory: [],
   chains: {
     chains: [],
     status: "idle",
@@ -38,12 +40,15 @@ const contractSlice = createSlice({
     setProxyAddress: (state, action: PayloadAction<string>) => {
       state.proxyAddress = action.payload;
     },
-    setWithdrawAddress: (state, action: PayloadAction<string>) => {
-      state.withdrawAddress = action.payload;
+    addWithdrawAddress: (state, action: PayloadAction<string>) => {
+      state.withdrawAddressHistory.push(action.payload);
     },
-    setDummyVerifierAddress: (state, action: PayloadAction<string>) => {
-      state.dummyVerifierAddress = action.payload;
+    addDummyVerifierAddress: (state, action: PayloadAction<string>) => {
+      state.dmVerifierAddressHistory.push(action.payload);
     },
+    addProxyAddress: (state, action: PayloadAction<string>) => {
+      state.proxyAddressHistory.push(action.payload);
+    }
   },
   extraReducers: (builder) => {
     builder
@@ -63,8 +68,9 @@ const contractSlice = createSlice({
 });
 
 export const selectProxyAddress = (state: RootState) => state.contract.proxyAddress;
-export const selectWithdrawAddress = (state: RootState) => state.contract.withdrawAddress;
-export const selectDummyVerifierAddress = (state: RootState) => state.contract.dummyVerifierAddress;
+export const selectWithdrawAddressHistory = (state: RootState) => state.contract.withdrawAddressHistory;
+export const selectDMVerifierAddressHistory = (state: RootState) => state.contract.dmVerifierAddressHistory;
+export const selectProxyAddressHistory = (state: RootState) => state.contract.proxyAddressHistory;
 export const selectChains = (state: RootState) => state.contract.chains;
-export const { setProxyAddress, setWithdrawAddress, setDummyVerifierAddress } = contractSlice.actions;
+export const { setProxyAddress, addWithdrawAddress, addDummyVerifierAddress, addProxyAddress } = contractSlice.actions;
 export default contractSlice.reducer;

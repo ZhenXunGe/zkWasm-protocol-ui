@@ -28,7 +28,7 @@ export const ModifyTokenModal: React.FC<ModifyTokenProps> = ({
       }
 
       validateHexString(tokenAddress, 40);
-      
+
       setIsModifyingToken(true);
 
       // Ensure the token address is a valid Ethereum address
@@ -45,6 +45,7 @@ export const ModifyTokenModal: React.FC<ModifyTokenProps> = ({
       }
 
       // Call the modifyToken function
+      addLog("info", `Please sign the transaction in your wallet. This signature is required to authorize the execution of the contract function.`);
       const tx = await currentProxy.modifyToken(tokenIndex, l1token);
       addLog("info", "Transaction sent");
       addLog("txhash", tx.hash, chainId);
@@ -53,10 +54,12 @@ export const ModifyTokenModal: React.FC<ModifyTokenProps> = ({
       const receipt = await tx.wait();
       addLog("info", "Transaction confirmed. Gas used: " + receipt.gasUsed.toString());
       const statusRes = receipt.status === 1 ? "Success" : "Failure";
-      addLog("info", "Status: " + statusRes);
+      addLog("info", "Transaction Receipt Status: " + statusRes);
 
       addLog("success", 'Token modified successfully!');
+      addLog("info", "Start updating latest Proxy info...");
       await queryProxyInfo();
+      setTokenAddress('');
       setIsModifyingToken(false);
       onClose();
     } catch (error) {
