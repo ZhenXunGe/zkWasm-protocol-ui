@@ -1,101 +1,122 @@
 import { ethers } from 'ethers';
+import { Log, LogType } from './types';
 
 export interface AddTXProps {
+  show: boolean;
+  onClose: () => void;
+  currentProxy: ethers.Contract;
+  queryProxyInfo: () => Promise<void>;
+  chainId: string;
   signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null;
-  withdrawAddress: string | null;
-  addTXEnabled: boolean;
-  setAddTXEnabled:  React.Dispatch<React.SetStateAction<boolean>>;
-  handleError: (error: string) => void;
 }
 
 export interface AddTokenProps {
-  signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null,
-  actionEnabled: boolean;
-  handleError: (error: string) => void;
-}
-
-export interface DeployContractProps {
-  signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null;
-  setActionEnabled: React.Dispatch<React.SetStateAction<boolean>>;
-  setAddTXEnabled:  React.Dispatch<React.SetStateAction<boolean>>;
-  handleError: (error: string) => void;
+  show: boolean;
+  onClose: () => void;
+  currentProxy: ethers.Contract;
+  queryProxyInfo: () => Promise<void>;
+  chainId: string;
 }
 
 export interface ErrorModalProps {
   show: boolean;
-  message: string;
   onClose: () => void;
+  title?: string;
+  message: string;
 }
 
 export interface ModifyTokenProps {
-  signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null;
-  actionEnabled: boolean;
-  handleError: (error: string) => void;
+  show: boolean;
+  onClose: () => void;
+  currentProxy: ethers.Contract;
+  queryProxyInfo: () => Promise<void>;
+  chainId: string;
+  tokenIndex: number | null;
 }
 
 export interface QueryAllTokensProps {
   signer: ethers.JsonRpcSigner | null;
   proxyAddress: string | null;
   actionEnabled: boolean;
-  handleError: (error: string) => void;
 }
 
 export interface QueryExistingProxyProps {
   signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null;
-  handleError: (error: string) => void;
+  addLog: (type: LogType, message: string, chainId?: string) => void;
 }
 
-export interface SetMerkleProps {
-  signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null,
-  actionEnabled: boolean;
-  handleError: (error: string) => void;
+export interface SetMerkleModalProps {
+  show: boolean;
+  onClose: () => void;
+  currentProxy: ethers.Contract;
+  queryProxyInfo: () => Promise<void>;
+  chainId: string;
 }
 
-export interface SetSettlerProps {
-  signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null;
-  actionEnabled: boolean;
-  handleError: (error: string) => void;
+export interface SetSettlerModalProps {
+  show: boolean;
+  onClose: () => void;
+  currentProxy: ethers.Contract;
+  queryProxyInfo: () => Promise<void>;
+  chainId: string
 }
 
-export interface SetOwnerProps {
-  signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null;
-  actionEnabled: boolean;
-  handleError: (error: string) => void;
+export interface SetOwnerModalProps {
+  show: boolean;
+  onClose: () => void;
+  currentProxy: ethers.Contract;
+  queryProxyInfo: () => Promise<void>;
+  chainId: string;
 }
 
-export interface SetVerifierProps {
-  signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null;
-  verifierAddress: string | null;
-  actionEnabled: boolean;
-  handleError: (error: string) => void;
-}
-
-export interface SetVerifierImageCommitmentsProps {
-  signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null;
-  actionEnabled: boolean;
-  handleError: (error: string) => void;
-}
-
-export interface SetWithdrawLimitProps {
-  signer: ethers.JsonRpcSigner | null;
-  proxyAddress: string | null;
-  actionEnabled: boolean;
-  handleError: (error: string) => void;
+export interface SetVerifierImgCommitModalProps {
+  show: boolean;
+  onClose: () => void;
+  currentProxy: ethers.Contract;
+  queryProxyInfo: () => Promise<void>;
+  chainId: string;
 }
 
 export interface TopUpProps {
-  signer: ethers.JsonRpcSigner | null;
+  show: boolean;
+  onClose: () => void;
+  currentProxy: ethers.Contract;
   proxyAddress: string | null;
-  actionEnabled: boolean;
-  handleError: (error: string) => void;
+  signer: ethers.Signer | null;
+  chainId: string;
+  tokenIndex: number | null;
+}
+
+export interface LoggerContextProps {
+  logs: Log[];
+  addLog: (type: LogType, message: string, chainId?: string) => void;
+  clearLogs: () => void;
+}
+
+export interface SetWithdrawLimitProps {
+  show: boolean;
+  onClose: () => void;
+  currentProxy: ethers.Contract;
+  queryProxyInfo: () => Promise<void>;
+  chainId: string;
+}
+
+export interface TokenListProps {
+  show: boolean;
+  onClose: () => void;
+  currentProxy: ethers.Contract;
+  tokenList: string[];
+  proxyAddress: string | null;
+  queryProxyInfo: () => Promise<void>;
+  chainId: string;
+  signer:  ethers.JsonRpcSigner | null;
+}
+
+export interface SetVerifierProps {
+  show: boolean;
+  onClose: () => void;
+  currentProxy: ethers.Contract;
+  queryProxyInfo: () => Promise<void>;
+  chainId: string;
+  signer:  ethers.JsonRpcSigner | null;
 }

@@ -3,6 +3,7 @@ import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import { GameController } from './main/controller';
+import { LoggerProvider } from "./main/logger/LoggerContext";
 
 function App() {
   return (
@@ -15,7 +16,9 @@ function App() {
         </Col>
       </Row>
       <Row>
-        <GameController />
+        <LoggerProvider>
+          <GameController />
+        </LoggerProvider>
       </Row>
     </Container>
   );

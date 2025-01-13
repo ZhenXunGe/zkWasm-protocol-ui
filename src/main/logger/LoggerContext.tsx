@@ -1,21 +1,28 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { LoggerContextProps } from "../props";
+import { Log, LogType } from "../types";
 
-// Logger Context
-const LoggerContext = createContext({
-  logs: [] as string[],
-  addLog: (message: string) => { console.log(message) },
+const LoggerContext = createContext<LoggerContextProps>({
+  logs: [],
+  addLog: () => {},
   clearLogs: () => {},
 });
 
-export const LoggerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [logs, setLogs] = useState<string[]>([]);
+export const LoggerProvider = ({ children }: { children: ReactNode }) => {
+  const [logs, setLogs] = useState<Log[]>([]);
 
-  const addLog = (message: string) => {
-    setLogs((prevLogs) => [...prevLogs, message]);
+  const addLog = (type: LogType, message: string, chainId?: string) => {
+    const newLog: Log = {
+      time: new Date().toLocaleString(),
+      type,
+      message,
+      chainId
+    };
+    setLogs((prevLogs) => [...prevLogs, newLog]);
   };
 
   const clearLogs = () => {
-    setLogs([]); // Clear all logs
+    setLogs([]);
   };
 
   return (
